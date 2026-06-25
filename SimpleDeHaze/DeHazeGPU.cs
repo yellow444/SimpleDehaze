@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Drawing;
 
 using Emgu.CV;
@@ -114,6 +114,7 @@ namespace SimpleDeHaze
                 channels[i].ToMat().CopyTo(channelsData[i]);
             }
             var darkChannelData = new byte[channels[0].Size.Width * channels[0].Size.Height];
+            foreach (var c in channels) c.Dispose();
             CudaInvoke.Multiply(darkChannel, new ScalarArray(255), darkChannel);
             darkChannel.ConvertTo(darkChannel, DepthType.Cv8U);
             var darkChannelByte = darkChannel.ToMat();
@@ -230,7 +231,9 @@ namespace SimpleDeHaze
             CudaInvoke.Divide(invgb, covDet, invgb);
             CudaInvoke.Divide(invbb, covDet, invbb);
             using var result = new GpuMat();
-            using var pc = new VectorOfGpuMat(((GpuMat)src.Clone()).Split());
+            using var srcClone = (GpuMat)src.Clone();
+            var pcSplit = srcClone.Split();
+            using var pc = new VectorOfGpuMat(pcSplit);
             for (var i = 0; i < src.NumberOfChannels; i++)
             {
                 using var p = (GpuMat)pc[i].Clone();
@@ -296,6 +299,8 @@ namespace SimpleDeHaze
             }
             CudaInvoke.Merge(pc, result);
             result.ConvertTo(result, src.Depth);
+            foreach (var c in Ichannels) c.Dispose();
+            foreach (var s in pcSplit) s.Dispose();
             return (GpuMat)result.Clone();
         }
 
@@ -303,12 +308,14 @@ namespace SimpleDeHaze
         {
             using var image = (GpuMat)srcImage.Clone();
             CudaInvoke.Multiply(image, new ScalarArray(new MCvScalar(0.114f, 0.587f, 0.299f)), image);
-            using var chanels = new VectorOfGpuMat(image.Split());
+            var graySplit = image.Split();
+            using var chanels = new VectorOfGpuMat(graySplit);
             CudaInvoke.Add(chanels[0], chanels[1], chanels[0]);
             CudaInvoke.Add(chanels[0], chanels[2], chanels[0]);
             using var result = new GpuMat();
             CudaInvoke.Merge(chanels, result);
             CudaInvoke.CvtColor(result, result, ColorConversion.Bgr2Gray);
+            foreach (var s in graySplit) s.Dispose();
             return (GpuMat)result.Clone();
         }
 
@@ -320,7 +327,9 @@ namespace SimpleDeHaze
 
         private static GpuMat RecoverImage(GpuMat srcImage, GpuMat transmission, MCvScalar atmosphericLight, float min)
         {
-            using var srcImageSplit = new VectorOfGpuMat(((GpuMat)srcImage.Clone()).Split());
+            using var srcClone = (GpuMat)srcImage.Clone();
+            var srcSplit = srcClone.Split();
+            using var srcImageSplit = new VectorOfGpuMat(srcSplit);
             CudaInvoke.Add(srcImageSplit[0], new ScalarArray(-atmosphericLight.V0), srcImageSplit[0]);
             CudaInvoke.Add(srcImageSplit[1], new ScalarArray(-atmosphericLight.V1), srcImageSplit[1]);
             CudaInvoke.Add(srcImageSplit[2], new ScalarArray(-atmosphericLight.V2), srcImageSplit[2]);
@@ -340,6 +349,8 @@ namespace SimpleDeHaze
             using var mergeImageSplit = new GpuMat();
             CudaInvoke.Merge(srcImageSplit, mergeImageSplit);
             using var result = Clip(mergeImageSplit);
+            foreach (var s in transmissionSplit) s.Dispose();
+            foreach (var s in srcSplit) s.Dispose();
             return (GpuMat)result.Clone();
         }
 
@@ -347,7 +358,9 @@ namespace SimpleDeHaze
         {
             using var colorsChannel = new GpuMat();
             CudaInvoke.Min(srcImage, srcImage, colorsChannel);
-            using var colorsChannelSplit = new VectorOfGpuMat(((GpuMat)colorsChannel.Clone()).Split());
+            using var ccClone = (GpuMat)colorsChannel.Clone();
+            var ccSplit = ccClone.Split();
+            using var colorsChannelSplit = new VectorOfGpuMat(ccSplit);
             var ksize = new Size(2 * patch + 1, 2 * patch + 1);
             var elem = CvInvoke.GetStructuringElement(ElementShape.Rectangle, ksize, new Point(-1, -1));
             using (var erode = new CudaMorphologyFilter(MorphOp.Erode, colorsChannel.Depth, 1, elem, new Point(-1, -1), 1))
@@ -358,6 +371,7 @@ namespace SimpleDeHaze
                 }
             }
             CudaInvoke.Merge(colorsChannelSplit, colorsChannel);
+            foreach (var s in ccSplit) s.Dispose();
             Show("ComputeColorsChannelPatch" + name, colorsChannel);
             return (GpuMat)colorsChannel.Clone();
         }
@@ -375,12 +389,15 @@ namespace SimpleDeHaze
                 erode.Apply(darkChannel, darkChannel);
             }
             Show("ComputeDarkChannel" + name, darkChannel);
+            foreach (var c in bgrChannels) c.Dispose();
             return (GpuMat)darkChannel.Clone();
         }
 
         private GpuMat EstimateTransmission(GpuMat colorsChannel, MCvScalar atmosphericLight, float beta)
         {
-            using var colorsChannelMin = new VectorOfGpuMat(((GpuMat)colorsChannel.Clone()).Split());
+            using var ctClone = (GpuMat)colorsChannel.Clone();
+            var ctSplit = ctClone.Split();
+            using var colorsChannelMin = new VectorOfGpuMat(ctSplit);
             CudaInvoke.Divide(new ScalarArray(-beta * atmosphericLight.V0), colorsChannelMin[0], colorsChannelMin[0]);
             CudaInvoke.Divide(new ScalarArray(-beta * atmosphericLight.V1), colorsChannelMin[1], colorsChannelMin[1]);
             CudaInvoke.Divide(new ScalarArray(-beta * atmosphericLight.V2), colorsChannelMin[2], colorsChannelMin[2]);
@@ -390,6 +407,7 @@ namespace SimpleDeHaze
             CudaInvoke.Multiply(estimate, estimate.NumberOfChannels == 1 ? new ScalarArray(-1) : new ScalarArray(new MCvScalar(-1, -1, -1)), estimate);
             CudaInvoke.Add(estimate, estimate.NumberOfChannels == 1 ? new ScalarArray(1) : new ScalarArray(new MCvScalar(1, 1, 1)), estimate);
             using var transmission = Clip(estimate);
+            foreach (var s in ctSplit) s.Dispose();
             Show("EstimateTransmission", transmission);
 
             return (GpuMat)transmission.Clone();
@@ -420,10 +438,10 @@ namespace SimpleDeHaze
                 MCvScalar meanIntensity2 = new();
                 MCvScalar meanIntensity3 = new();
                 MCvScalar meanIntensity4 = new();
-                CudaInvoke.MeanStdDev(GrayMat(imagePart1), ref meanIntensity1, ref meanIntensity);
-                CudaInvoke.MeanStdDev(GrayMat(imagePart2), ref meanIntensity2, ref meanIntensity);
-                CudaInvoke.MeanStdDev(GrayMat(imagePart3), ref meanIntensity3, ref meanIntensity);
-                CudaInvoke.MeanStdDev(GrayMat(imagePart4), ref meanIntensity4, ref meanIntensity);
+                using (var gm1 = GrayMat(imagePart1)) CudaInvoke.MeanStdDev(gm1, ref meanIntensity1, ref meanIntensity);
+                using (var gm2 = GrayMat(imagePart2)) CudaInvoke.MeanStdDev(gm2, ref meanIntensity2, ref meanIntensity);
+                using (var gm3 = GrayMat(imagePart3)) CudaInvoke.MeanStdDev(gm3, ref meanIntensity3, ref meanIntensity);
+                using (var gm4 = GrayMat(imagePart4)) CudaInvoke.MeanStdDev(gm4, ref meanIntensity4, ref meanIntensity);
                 if (meanIntensity1.V0 >= meanIntensity2.V0 && meanIntensity1.V0 >= meanIntensity3.V0 && meanIntensity1.V0 >= meanIntensity4.V0)
                 {
                     imagePart1.CopyTo(imageOrg);
