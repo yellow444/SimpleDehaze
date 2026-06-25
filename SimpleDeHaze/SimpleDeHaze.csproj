@@ -1,11 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
+    <!-- CUDA-нативы только x64: фиксируем RID, чтобы нативные DLL раскладывались рядом с exe
+         и приложение запускалось простым `dotnet build` / `dotnet run` без флагов.
+         Остаётся framework-dependent (не self-contained) - без раздувания. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
@@ -282,7 +288,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- GPU-рантайм Emgu CV (OpenCV + CUDA). Версии 4.8.0.5324 НЕТ на nuget.org
+         (убрана из-за лимита размера пакета 250 МБ), поэтому .nupkg берётся из
+         локального фида localpackages\, который наполняет tools\fetch-emgu-packages.ps1
+         (качает официальный GitHub-релиз Emgu). Гигабайты в git не хранятся. -->
     <PackageReference Include="Emgu.CV.runtime.windows.cuda" Version="4.8.0.5324" />
   </ItemGroup>
+
+  <!-- Понятное предупреждение, если бутстрап ещё не запускали -->
+  <Target Name="WarnIfEmguFeedMissing" BeforeTargets="Restore;Build">
+    <Warning Condition="!Exists('..\localpackages\Emgu.CV.runtime.windows.cuda.4.8.0.5324.nupkg')"
+             Text="Нет локального фида GPU-пакетов. Запусти один раз:  pwsh tools\fetch-emgu-packages.ps1" />
+  </Target>
 
 </Project>

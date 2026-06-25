@@ -361,3 +361,13 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# --- SimpleDeHaze: GPU-бинарники Emgu качаются tools\fetch-emgu-packages.ps1, в git не хранятся ---
+/localpackages/
+/native/
+selftest_out/
+# scratch and generated outputs
+/TEMP.md
+/*.csv
+/selftest_out/
+/result/
