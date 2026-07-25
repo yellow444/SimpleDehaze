@@ -5,6 +5,7 @@ using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
+using Emgu.CV.XImgproc;
 
 namespace SimpleDeHaze.Methods
 {
@@ -284,6 +285,31 @@ namespace SimpleDeHaze.Methods
                 CvInvoke.Subtract(down, up, dst);
             }
             return o;
+        }
+
+        // ---------- Fast Guided Filter (subsample + guided filter + upsample) ----------
+        public static Mat FastGuided(Mat guide, Mat src, int radius, double eps, int scale)
+        {
+            int s = Math.Max(1, scale);
+            if (s <= 1 || guide.Cols / s < 32 || guide.Rows / s < 32)
+            {
+                var full = new Mat();
+                XImgprocInvoke.GuidedFilter(guide, src, full, radius, eps);
+                return full;
+            }
+
+            var smallSize = new Size(Math.Max(1, guide.Cols / s), Math.Max(1, guide.Rows / s));
+            using var guideSmall = new Mat();
+            using var srcSmall = new Mat();
+            CvInvoke.Resize(guide, guideSmall, smallSize, 0, 0, Inter.Area);
+            CvInvoke.Resize(src, srcSmall, smallSize, 0, 0, Inter.Area);
+
+            using var qSmall = new Mat();
+            XImgprocInvoke.GuidedFilter(guideSmall, srcSmall, qSmall, Math.Max(1, radius / s), eps);
+
+            var q = new Mat();
+            CvInvoke.Resize(qSmall, q, guide.Size, 0, 0, Inter.Linear);
+            return q;
         }
 
         // ---------- Weighted Guided Filter (одноканальный гайд по яркости, адаптивная ε) ----------

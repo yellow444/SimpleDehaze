@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "minimumFreeReserveGiB": 10,
+    "archivesAreImmutable": true,
+    "largeDatasetsNotApproved": [
+      "HazeSpace2M",
+      "DIODE train",
+      "RESIDE ITS",
+      "RESIDE OTS"
+    ]
+  },
+  "datasets": [
+    {
+      "name": "I-HAZE",
+      "kind": "real-paired",
+      "url": "https://data.vision.ee.ethz.ch/cvl/ntire18/i-haze/I-HAZE.zip",
+      "archiveBytes": 326825391,
+      "adapter": "tools/prepare-dehaze-dataset.ps1"
+    },
+    {
+      "name": "O-HAZE",
+      "kind": "real-paired",
+      "url": "https://data.vision.ee.ethz.ch/cvl/ntire18/o-haze/O-HAZE.zip",
+      "adapter": "datasets/manifests/o-haze-in-repo.json"
+    },
+    {
+      "name": "Dense-Haze",
+      "kind": "real-paired",
+      "url": "https://data.vision.ee.ethz.ch/cvl/ntire19/dense-haze/files/Dense_Haze_NTIRE19.zip",
+      "archiveBytes": 245267680,
+      "adapter": "tools/prepare-dehaze-dataset.ps1"
+    },
+    {
+      "name": "NH-HAZE",
+      "kind": "real-paired",
+      "url": "https://data.vision.ee.ethz.ch/cvl/ntire20/nh-haze/files/NH-HAZE.zip",
+      "archiveBytes": 330735056,
+      "adapter": "tools/prepare-dehaze-dataset.ps1"
+    },
+    {
+      "name": "DIODE-Val",
+      "kind": "rgb-depth",
+      "url": "http://diode-dataset.s3.amazonaws.com/val.tar.gz",
+      "archiveBytes": 2774625282,
+      "estimatedExtractedBytes": 8589934592,
+      "md5": "5c895d09201b88973c8fe4552a67dd85",
+      "adapter": "tools/prepare-diode.ps1"
+    }
+  ]
+}

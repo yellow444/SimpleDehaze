@@ -13,6 +13,8 @@ namespace SimpleDeHaze.Methods
             "DCP, но карта t уточняется Domain Transform фильтром (Gastal & Oliveira, 2011) -\n" +
             "edge-aware сглаживание за O(N) через 'геодезическое' 1D-преобразование координат,\n" +
             "применяемое сепарабельно по строкам и столбцам. Очень быстро, годится для видео.\n\n" +
+            "Формула: t_raw = 1 − ω·min_c min_Ω(I_c/A_c); t = DomainTransform(t_raw | I, σ_s, σ_r);\n" +
+            "J = (I − A)/max(t, t_min) + A.\n\n" +
             "Параметры: σ_s - пространственный масштаб; σ_r - цветовой; ω, patch - DCP.";
 
         public IReadOnlyList<ParamDef> Parameters { get; } = new[]

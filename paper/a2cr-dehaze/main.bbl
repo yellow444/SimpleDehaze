@@ -1,0 +1,153 @@
+\begin{thebibliography}{21}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[He et~al.(2011)He, Sun, and Tang]{he2011dcp}
+Kaiming He, Jian Sun, and Xiaoou Tang.
+\newblock Single image haze removal using dark channel prior.
+\newblock \emph{IEEE Transactions on Pattern Analysis and Machine
+  Intelligence}, 33\penalty0 (12):\penalty0 2341--2353, 2011.
+\newblock \doi{10.1109/TPAMI.2010.168}.
+
+\bibitem[Meng et~al.(2013)Meng, Wang, Duan, Xiang, and Pan]{meng2013boundary}
+Gaofeng Meng, Ying Wang, Jiangyong Duan, Shiming Xiang, and Chunhong Pan.
+\newblock Efficient image dehazing with boundary constraint and contextual
+  regularization.
+\newblock In \emph{ICCV}, pages 617--624, 2013.
+\newblock \doi{10.1109/ICCV.2013.82}.
+
+\bibitem[Zhu et~al.(2015)Zhu, Mai, and Shao]{zhu2015cap}
+Qingsong Zhu, Jiaming Mai, and Ling Shao.
+\newblock A fast single image haze removal algorithm using color attenuation
+  prior.
+\newblock \emph{IEEE Transactions on Image Processing}, 24\penalty0
+  (11):\penalty0 3522--3533, 2015.
+\newblock \doi{10.1109/TIP.2015.2446191}.
+
+\bibitem[Berman et~al.(2016)Berman, Treibitz, and Avidan]{berman2016nonlocal}
+Dana Berman, Tali Treibitz, and Shai Avidan.
+\newblock Non-local image dehazing.
+\newblock In \emph{CVPR}, pages 1674--1682, 2016.
+
+\bibitem[Zhao(2021)]{zhao2021bcdp}
+Shiyu Zhao.
+\newblock Single image dehazing using bounded channel difference prior.
+\newblock In \emph{CVPR Workshops}, pages 727--735, 2021.
+
+\bibitem[Zhang et~al.(2018{\natexlab{a}})Zhang, Gao, and
+  Zhang]{zhang2018airlight}
+Lijun Zhang, Yongbin Gao, and Yujin Zhang.
+\newblock An image dehazing approach based on the airlight field estimation.
+\newblock \emph{arXiv preprint arXiv:1805.02142}, 2018{\natexlab{a}}.
+
+\bibitem[Zhang et~al.(2020)Zhang, Wu, Zhao, Cheng, and Ren]{zhang2020color}
+Shengdong Zhang, Yue Wu, Yuanjie Zhao, Zuomin Cheng, and Wenqi Ren.
+\newblock Color-constrained dehazing model.
+\newblock In \emph{CVPR Workshops}, pages 870--871, 2020.
+
+\bibitem[Tong et~al.(2022)Tong, Wang, Cui, Yan, and Wei]{tong2022semi}
+Ming Tong, Yongzhen Wang, Peng Cui, Xuefeng Yan, and Mingqiang Wei.
+\newblock Semi-uformer: Semi-supervised uncertainty-aware transformer for image
+  dehazing.
+\newblock \emph{arXiv preprint arXiv:2210.16057}, 2022.
+
+\bibitem[Wei(2026)]{wei2026bpul}
+Bingcai Wei.
+\newblock Backbone-agnostic perturbation-induced uncertainty learning for
+  end-to-end real-world image dehazing.
+\newblock \emph{arXiv preprint arXiv:2607.11623}, 2026.
+
+\bibitem[Ma et~al.(2025)Ma, Feng, Zhang, Liu, Wang, Chen, Xu, and
+  Su]{ma2025coa}
+Long Ma, Yuxin Feng, Yan Zhang, Jinyuan Liu, Weimin Wang, Guang-Yong Chen,
+  Chengpei Xu, and Zhuo Su.
+\newblock Coa: Towards real image dehazing via compression-and-adaptation.
+\newblock In \emph{CVPR}, pages 11197--11206, 2025.
+
+\bibitem[Wang et~al.(2025)Wang, Zheng, Zhang, Li, Liu, Zhai, and
+  Liu]{wang2025hazing}
+Ruiyi Wang, Yushuo Zheng, Zicheng Zhang, Chunyi Li, Shuaicheng Liu, Guangtao
+  Zhai, and Xiaohong Liu.
+\newblock Learning hazing to dehazing: Towards realistic haze generation for
+  real-world image dehazing.
+\newblock In \emph{CVPR}, pages 23091--23100, 2025.
+
+\bibitem[Lan et~al.(2025)Lan, Cui, Luo, Liu, Wang, Zhang, Su, and
+  Liu]{lan2025dehazesb}
+Yunwei Lan, Zhigao Cui, Xin Luo, Chang Liu, Nian Wang, Menglin Zhang, Yanzhao
+  Su, and Dong Liu.
+\newblock When schrodinger bridge meets real-world image dehazing with unpaired
+  training.
+\newblock In \emph{ICCV}, pages 8756--8765, 2025.
+
+\bibitem[Condat(2013)]{condat2013}
+Laurent Condat.
+\newblock A primal-dual splitting method for convex optimization involving
+  lipschitzian, proximable and linear composite terms.
+\newblock \emph{Journal of Optimization Theory and Applications}, 158\penalty0
+  (2):\penalty0 460--479, 2013.
+\newblock \doi{10.1007/s10957-012-0245-9}.
+
+\bibitem[Vasiljevic et~al.(2019)Vasiljevic, Kolkin, Zhang, Luo, Wang, Dai,
+  Daniele, Mostajabi, Basart, Walter, and Shakhnarovich]{vasiljevic2019diode}
+Igor Vasiljevic, Nick Kolkin, Shanyi Zhang, Ruotian Luo, Haochen Wang,
+  Falcon~Z. Dai, Andrea~F. Daniele, Mohammadreza Mostajabi, Steven Basart,
+  Matthew~R. Walter, and Gregory Shakhnarovich.
+\newblock Diode: A dense indoor and outdoor depth dataset.
+\newblock \emph{arXiv preprint arXiv:1908.00463}, 2019.
+
+\bibitem[Wang et~al.(2004)Wang, Bovik, Sheikh, and Simoncelli]{wang2004ssim}
+Zhou Wang, Alan~C. Bovik, Hamid~R. Sheikh, and Eero~P. Simoncelli.
+\newblock Image quality assessment: From error visibility to structural
+  similarity.
+\newblock \emph{IEEE Transactions on Image Processing}, 13\penalty0
+  (4):\penalty0 600--612, 2004.
+\newblock \doi{10.1109/TIP.2003.819861}.
+
+\bibitem[Sharma et~al.(2005)Sharma, Wu, and Dalal]{sharma2005ciede}
+Gaurav Sharma, Wencheng Wu, and Edul~N. Dalal.
+\newblock The ciede2000 color-difference formula: Implementation notes,
+  supplementary test data, and mathematical observations.
+\newblock \emph{Color Research and Application}, 30\penalty0 (1):\penalty0
+  21--30, 2005.
+\newblock \doi{10.1002/col.20070}.
+
+\bibitem[Zhang et~al.(2018{\natexlab{b}})Zhang, Isola, Efros, Shechtman, and
+  Wang]{zhang2018lpips}
+Richard Zhang, Phillip Isola, Alexei~A. Efros, Eli Shechtman, and Oliver Wang.
+\newblock The unreasonable effectiveness of deep features as a perceptual
+  metric.
+\newblock In \emph{CVPR}, pages 586--595, 2018{\natexlab{b}}.
+\newblock \doi{10.1109/CVPR.2018.00068}.
+
+\bibitem[Ancuti et~al.(2018{\natexlab{a}})Ancuti, Ancuti, Timofte, and
+  De~Vleeschouwer]{ancuti2018ihaze}
+Codruta~O. Ancuti, Cosmin Ancuti, Radu Timofte, and Christophe De~Vleeschouwer.
+\newblock I-haze: A dehazing benchmark with real hazy and haze-free indoor
+  images.
+\newblock \emph{arXiv preprint arXiv:1804.05091}, 2018{\natexlab{a}}.
+
+\bibitem[Ancuti et~al.(2018{\natexlab{b}})Ancuti, Ancuti, Timofte, and
+  De~Vleeschouwer]{ancuti2018ohaze}
+Codruta~O. Ancuti, Cosmin Ancuti, Radu Timofte, and Christophe De~Vleeschouwer.
+\newblock O-haze: A dehazing benchmark with real hazy and haze-free outdoor
+  images.
+\newblock In \emph{CVPR Workshops}, pages 754--762, 2018{\natexlab{b}}.
+
+\bibitem[Ancuti et~al.(2019)Ancuti, Ancuti, Sbert, and
+  Timofte]{ancuti2019dense}
+Codruta~O. Ancuti, Cosmin Ancuti, Mateu Sbert, and Radu Timofte.
+\newblock Dense-haze: A benchmark for image dehazing with dense-haze and
+  haze-free images.
+\newblock \emph{arXiv preprint arXiv:1904.02904}, 2019.
+
+\bibitem[Ancuti et~al.(2020)Ancuti, Ancuti, and Timofte]{ancuti2020nh}
+Codruta~O. Ancuti, Cosmin Ancuti, and Radu Timofte.
+\newblock Nh-haze: An image dehazing benchmark with non-homogeneous hazy and
+  haze-free images.
+\newblock \emph{arXiv preprint arXiv:2005.03560}, 2020.
+
+\end{thebibliography}

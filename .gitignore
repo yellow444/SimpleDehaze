@@ -371,3 +371,22 @@ selftest_out/
 /*.csv
 /selftest_out/
 /result/
+
+# Профилировочные дампы Nsight Compute: большие бинарники, не место в истории
+*.ncu-rep
+profiling/
+benchdata/
+benchmark_results/
+
+# Артефакты локальных прогонов
+mathtest.log
+mathtest.err
+bench_check.*
+
+# Локальные диагностические рендеры (воспроизводятся тестами/CLI, в историю не входят)
+/autotune_smoke_out/
+/autotune_smoke_ref_out/
+/image_visibility_best/
+/local_visibility_render/
+/local_visibility_hq_render/
+/noisetest_out/

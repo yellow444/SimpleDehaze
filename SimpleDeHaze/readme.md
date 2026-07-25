@@ -1,7 +1,9 @@
 # SimpleDeHaze
 
-Удаление дымки методом **Dark Channel Prior** на **.NET 8** через **Emgu.CV** -
-реализации для **CPU** (`DeHazeCPU`) и **GPU/CUDA** (`DeHazeGPU`).
+Экспериментальный стенд классического, non-ML удаления дымки на **.NET 8** через **Emgu.CV**.
+В проекте есть legacy DCP-реализации для **CPU** (`DeHazeCPU`) и **GPU/CUDA** (`DeHazeGPU`),
+а также модульный `Methods/` framework с DCP/CAP/RFEP-DCP/BRACE/PF-SFGF/LAF/GDR-SP/
+Gradient-Domain и enhancement-baselines.
 
 **Документация по алгоритму:** [docs/README.md](docs/README.md)
 > '4.8' в зависимостях - это версия Emgu CV / OpenCV, **не** .NET Framework. Проект на `net8.0`.
@@ -18,18 +20,37 @@ pwsh build.ps1
 Запуск (по умолчанию - **графический интерфейс**):
 
 ```powershell
-dotnet run --project .\SimpleDeHaze\SimpleDeHaze.csproj -c Release                # GUI
+dotnet run --project .\SimpleDeHaze\SimpleDeHaze.csproj -c Release                # GUI (новый, WPF)
 dotnet run --project .\SimpleDeHaze\SimpleDeHaze.csproj -c Release -- foto.jpg     # GUI с уже открытым файлом
+dotnet run --project .\SimpleDeHaze\SimpleDeHaze.csproj -c Release -- --old-ui     # прежний GUI на WinForms
 dotnet run --project .\SimpleDeHaze\SimpleDeHaze.csproj -c Release -- --batch      # прежний прогон по dataset\ (окна OpenCV)
 dotnet run --project .\SimpleDeHaze\SimpleDeHaze.csproj -c Release -- --selftest   # headless-проверка всех методов
+dotnet run --project .\SimpleDeHaze\SimpleDeHaze.csproj -c Release -- --mathtest   # численные проверки физического ядра
+dotnet run --project .\SimpleDeHaze\SimpleDeHaze.csproj -c Release -- --benchmark --limit=3 --maxdim=800 --out=bench.csv
+dotnet run --project .\SimpleDeHaze\SimpleDeHaze.csproj -c Release -- --benchmark --manifest=datasets/manifests/o-haze-in-repo.json --split=test --profile=core --evalfull --out=benchmark_results/bench_core.csv
+dotnet run --project .\SimpleDeHaze.Tests\SimpleDeHaze.Tests.csproj -c Release
 ```
+
+Для **сравнения приоров** используйте `--profile=core`: он допускает только методы с явно заданным
+core-профилем, поэтому косметика не отключается эвристически по имени параметра. Эталонный baseline -
+метод `DCP канонический (He 2009, baseline)`; методы с пометкой *Legacy* - историческая ветка
+проекта, это **не** канонический DCP. Подробности: [NOVELTY.md](../NOVELTY.md),
+[REPRODUCIBILITY.md](../REPRODUCIBILITY.md).
 
 ## Интерфейс (GUI)
 
-Окно: выбор **метода** (DCP CPU, DCP GPU/CUDA, CAP HSV), **ползунки параметров** под выбранный
-метод, кнопка **'Вычислить'** (считает в фоне, показывает время), панели **вход | результат** и
+Окно: выбор **метода** (A²CR dual-gain recovery, legacy DCP CPU/GPU, CAP HSV, RFEP-DCP, BRACE-DCP, PF-SFGF,
+LAF-TV/WLS, GDR-SP, Gradient Domain, CLAHE/Retinex и др.), **ползунки параметров** под выбранный метод, кнопка
+**'Вычислить'** (считает в фоне, показывает время), панели **вход | результат** и
 **'Сохранить...'**. Каждый метод сам объявляет свои параметры, поэтому ползунки генерируются
 автоматически.
+
+Benchmark в GUI и `--selftest` считают PSNR/SSIM, совмещённые PSNR/SSIM, CIEDE2000,
+no-reference score, runtime и две явно собственные диагностические эвристики
+`NaturalnessDev`/`ArtifactDev`, не совместимые с официальными NIQE/BRISQUE.
+Для воспроизводимых прогонов по `dataset/` есть headless-режим `--benchmark`; он пишет CSV
+без сохранения изображений и поддерживает manifests, фиксированные split, warm-up/repeat, измерение
+памяти и точную фиксацию параметров. Полный протокол: [REPRODUCIBILITY.md](../REPRODUCIBILITY.md).
 
 Добавить новый метод (из [docs/methods](docs/methods/README.md)): реализуйте интерфейс
 `SimpleDeHaze.Methods.IDeHazeMethod` (имя, список `ParamDef`, метод `Process`) и впишите класс в

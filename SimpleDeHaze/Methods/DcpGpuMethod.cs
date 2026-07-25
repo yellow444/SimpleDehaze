@@ -6,11 +6,12 @@ namespace SimpleDeHaze.Methods
     /// <summary>Dark Channel Prior на GPU (CUDA) - обёртка над <see cref="DeHazeGPU"/>.</summary>
     public sealed class DcpGpuMethod : IDeHazeMethod
     {
-        public string Name => "Dark Channel Prior (GPU - CUDA)";
+        public string Name => "Legacy поканальный (GPU CUDA)";
 
         public string Description =>
-            "Тот же Dark Channel Prior (He, 2009), но все стадии - на GPU (CUDA, GpuMat).\n" +
-            "На крупных кадрах заметно быстрее CPU-версии.\n\n" +
+            "GPU-версия ИСТОРИЧЕСКОЙ ветки (класс DeHazeGPU): та же поканальная экспоненциальная\n" +
+            "трансмиссия, что и в legacy CPU, все стадии на CUDA/GpuMat.\n" +
+            "Канонический DCP - отдельный метод «DCP канонический (He 2009)».\n\n" +
             "Шаги:\n" +
             "1. A - атмосферный свет по тёмному каналу светлой зоны (quad-decomposition).\n" +
             "2. t_c = clip( 1 - exp(-β*A_c / min I_c) ).\n" +

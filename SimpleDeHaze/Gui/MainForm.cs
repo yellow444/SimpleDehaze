@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -40,16 +40,26 @@ namespace SimpleDeHaze.Gui
             Text = "Метрики появятся после 'Вычислить'."
         };
         private readonly FlowLayoutPanel _paramsPanel = new() { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true };
+        // всплывающие тултипы на TrackBar в WinForms ненадёжны — дублируем подсказку в всегда видимый бокс
+        private readonly TextBox _paramHelpBox = new()
+        {
+            Dock = DockStyle.Bottom, Height = 82, Multiline = true, ReadOnly = true, WordWrap = true,
+            ScrollBars = ScrollBars.Vertical, BackColor = Color.FromArgb(255, 253, 232), BorderStyle = BorderStyle.FixedSingle,
+            Text = "Наведи курсор на ползунок или имя параметра — здесь появится подсказка: что делает параметр и куда крутить."
+        };
         private readonly FlowLayoutPanel _carousel = new() { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoScroll = true };
         private readonly Button _runBtn = new() { Text = "Вычислить", Width = 100 };
         private readonly Button _autoBestBtn = new() { Text = "Авто-лучший", Width = 118 };
         private readonly CheckBox _autoLoadCheck = new() { Text = "авто-лучший при загрузке", AutoSize = true, Padding = new Padding(4, 11, 0, 0) };
         private readonly Button _autoBtn = new() { Text = "Авто-параметры", Width = 120 };
         private readonly Button _tuneBtn = new() { Text = "Тщательный подбор", Width = 140 };
+        private readonly ComboBox _tuneGoalCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 172 };
         private readonly CheckBox _keepColorCheck = new() { Text = "цвет >= 1.2", AutoSize = true, Padding = new Padding(4, 11, 0, 0) };
+        private readonly CheckBox _fullEvalCheck = new() { Text = "оценка на оригинале", AutoSize = true, Padding = new Padding(4, 11, 0, 0) };
         private readonly Button _benchBtn = new() { Text = "Прогнать все", Width = 102 };
         private readonly Button _defBtn = new() { Text = "По умолчанию", Width = 110 };
         private readonly Button _fitBtn = new() { Text = "Вписать", Width = 78 };
+        private readonly Button _playBtn = new() { Text = "Песочница", Width = 96 };
         private readonly Button _saveBtn = new() { Text = "Сохранить...", Width = 96, Enabled = false };
         private readonly Label _status = new() { AutoSize = true, Padding = new Padding(10, 9, 0, 0), Text = "Выберите изображение в карусели или кликните по полю" };
 
@@ -68,11 +78,14 @@ namespace SimpleDeHaze.Gui
         private System.Threading.CancellationTokenSource? _tuneCts;
         private bool _busy;
 
+        private readonly ToolTip _paramTip = new() { AutoPopDelay = 30000, InitialDelay = 250, ReshowDelay = 80, ShowAlways = true };
         private readonly Dictionary<string, double> _values = new();
         private readonly Dictionary<string, TrackBar> _bars = new();
         private readonly Dictionary<string, Action> _updaters = new();
         private readonly Dictionary<string, ParamDef> _defs = new();
         private readonly List<(string hazy, string? gt)> _entries = new();
+        // запомненные позиции ползунков для каждого метода (имя метода -> ключ параметра -> значение)
+        private readonly Dictionary<string, Dictionary<string, double>> _methodValues = new();
 
         public MainForm(string? initialFile = null)
         {
@@ -85,7 +98,11 @@ namespace SimpleDeHaze.Gui
             _hazyView.Clicked += () => { if (_busy) return; if (LoadDialog(DatasetDir(), out var f)) LoadHazy(f); FitAll(); AutoIfEnabled(); };
             _gtView.Clicked += () => { if (_busy) return; if (LoadDialog(HazefreeDir(), out var f)) LoadGt(f); FitAll(); };
 
-            foreach (var m in MethodRegistry.All) _methodCombo.Items.Add(m.Name);
+            for (int i = 0; i < MethodRegistry.All.Count; i++)
+            {
+                string star = MethodRegistry.Recommended.Contains(MethodRegistry.All[i].Name) ? "★ " : "";
+                _methodCombo.Items.Add($"{star}{i + 1:00}. {MethodRegistry.All[i].Name}");
+            }
             _methodCombo.SelectedIndexChanged += (_, _) => RebuildParams();
             _runBtn.Click += async (_, _) => await RunAsync();
             _autoBestBtn.Click += async (_, _) =>
@@ -100,12 +117,22 @@ namespace SimpleDeHaze.Gui
                 else await TuneThoroughAsync();
             };
             _benchBtn.Click += async (_, _) => await RunAllAsync();
-            _defBtn.Click += (_, _) => RebuildParams();
+            _defBtn.Click += (_, _) => ResetDefaults();
+            new ToolTip().SetToolTip(_fullEvalCheck,
+                "Авто-подбор оценивает кандидатов на ПОЛНОМ кадре, а не на превью.\nТочнее, но в разы медленнее (особенно для HQ).");
             _fitBtn.Click += (_, _) => FitAll();
+            _playBtn.Click += (_, _) => OpenPlayground();
             _saveBtn.Click += (_, _) => SaveResult();
             _csvBtn.Click += (_, _) => ExportCsv();
             _benchGrid.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) SelectMethodFromGrid(e.RowIndex); };
             BuildBenchColumns();
+            _tuneGoalCombo.Items.AddRange(new object[]
+            {
+                "GT: PSNR/SSIM/ΔE/цвет",
+                "Объекты/контуры",
+                "Сочно/контраст"
+            });
+            _tuneGoalCombo.SelectedIndex = 1;
 
             var top = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(6, 7, 0, 0) };
             top.Controls.Add(new Label { Text = "Метод:", AutoSize = true, Padding = new Padding(6, 9, 4, 0) });
@@ -115,15 +142,32 @@ namespace SimpleDeHaze.Gui
             top.Controls.Add(_autoLoadCheck);
             top.Controls.Add(_autoBtn);
             top.Controls.Add(_tuneBtn);
+            top.Controls.Add(_tuneGoalCombo);
             top.Controls.Add(_keepColorCheck);
+            top.Controls.Add(_fullEvalCheck);
             top.Controls.Add(_benchBtn);
             top.Controls.Add(_defBtn);
             top.Controls.Add(_fitBtn);
+            top.Controls.Add(_playBtn);
             top.Controls.Add(_saveBtn);
-            top.Controls.Add(_status);
+
+            _status.AutoSize = false;
+            _status.Dock = DockStyle.Fill;
+            _status.Padding = new Padding(0);
+            _status.TextAlign = ContentAlignment.MiddleLeft;
+            var statusPanel = new Panel { Dock = DockStyle.Top, Height = 26, Padding = new Padding(8, 0, 8, 0) };
+            statusPanel.Controls.Add(_status);
 
             var left = new Panel { Dock = DockStyle.Left, Width = 366 };
             left.Controls.Add(_paramsPanel);
+            // подсказка по параметру (снизу под ползунками) — надёжнее тултипов
+            left.Controls.Add(new Label
+            {
+                Text = "Подсказка по параметру   ([авто]=быстрый+тщательный подбор, [подбор]=только тщательный, [режим]=не подбирается):",
+                Dock = DockStyle.Bottom, Height = 32, ForeColor = Color.Gray, Padding = new Padding(6, 3, 4, 0),
+                Font = new Font(Font.FontFamily, 7.5f)
+            });
+            left.Controls.Add(_paramHelpBox);
             left.Controls.Add(new Label { Text = "Параметры", Dock = DockStyle.Top, Height = 24, Font = new Font(Font, FontStyle.Bold), Padding = new Padding(6, 4, 0, 0) });
             left.Controls.Add(_metricsBox);
             left.Controls.Add(new Label { Text = "Метрики качества", Dock = DockStyle.Top, Height = 22, Font = new Font(Font, FontStyle.Bold), Padding = new Padding(6, 3, 0, 0) });
@@ -155,6 +199,7 @@ namespace SimpleDeHaze.Gui
             Controls.Add(tablePanel);
             Controls.Add(left);
             Controls.Add(carouselPanel);
+            Controls.Add(statusPanel);
             Controls.Add(top);
 
             if (_methodCombo.Items.Count > 0) _methodCombo.SelectedIndex = 0;
@@ -302,25 +347,47 @@ namespace SimpleDeHaze.Gui
             _descBox.Text = Current.Description;
             _paramsPanel.Controls.Clear();
             _values.Clear(); _bars.Clear(); _updaters.Clear(); _defs.Clear();
+
+            // запомненные значения именно этого метода (или дефолты, если метод видим впервые)
+            if (!_methodValues.TryGetValue(Current.Name, out var store)) { store = new(); _methodValues[Current.Name] = store; }
+
             foreach (var d in Current.Parameters)
             {
-                _values[d.Key] = d.Default; _defs[d.Key] = d;
+                double init = store.TryGetValue(d.Key, out var sv) ? Math.Clamp(sv, d.Min, d.Max) : d.Default;
+                _values[d.Key] = init; _defs[d.Key] = d; store[d.Key] = init;
                 var box = new Panel { Width = 310, Height = 48, Margin = new Padding(4, 4, 4, 0) };
                 var label = new Label { Dock = DockStyle.Top, Height = 18, AutoEllipsis = true };
                 var bar = new TrackBar { Dock = DockStyle.Top, Minimum = 0, Maximum = 1000, TickStyle = TickStyle.None, Height = 28 };
+                bar.Enabled = d.Max > d.Min;
                 void Update()
                 {
                     double v = PosToValue(d, bar.Value);
                     _values[d.Key] = v;
-                    label.Text = $"{d.Label} = {(d.IsInt ? v.ToString("0") : v.ToString("0.#####"))}" + (d.Search ? "   [авто]" : "");
+                    store[d.Key] = v;     // запомнить позицию для этого метода
+                    label.Text = $"{d.Label} = {(d.IsInt ? v.ToString("0") : v.ToString("0.#####"))}"
+                        + (d.Search ? "   [авто]" : d.Tunable ? "   [подбор]" : "   [режим]");
                 }
-                bar.Value = ValueToPos(d, d.Default);
+                bar.Value = ValueToPos(d, init);
                 bar.Scroll += (_, _) => Update();
                 Update();
+                string tip = ParamHelp.For(d);
+                _paramTip.SetToolTip(bar, tip);
+                _paramTip.SetToolTip(label, tip);
+                // надёжный путь: показать подсказку в всегда видимый бокс при наведении/фокусе
+                void ShowHelp(object? _, EventArgs __) => _paramHelpBox.Text = tip;
+                bar.MouseEnter += ShowHelp; label.MouseEnter += ShowHelp; box.MouseEnter += ShowHelp;
+                bar.Enter += ShowHelp; bar.Scroll += ShowHelp;
                 box.Controls.Add(bar); box.Controls.Add(label);
                 _paramsPanel.Controls.Add(box);
                 _bars[d.Key] = bar; _updaters[d.Key] = Update;
             }
+        }
+
+        /// <summary>Сбросить параметры текущего метода на значения по умолчанию (забыть запомненные).</summary>
+        private void ResetDefaults()
+        {
+            _methodValues.Remove(Current.Name);
+            RebuildParams();
         }
 
         private void ApplyValues(IReadOnlyDictionary<string, double> vals)
@@ -331,18 +398,12 @@ namespace SimpleDeHaze.Gui
 
         private static double PosToValue(ParamDef d, int pos)
         {
-            double frac = pos / 1000.0;
-            double v = d.Log ? d.Min * Math.Pow(d.Max / d.Min, frac) : d.Min + frac * (d.Max - d.Min);
-            if (d.Step > 0 && !d.Log) v = Math.Round(v / d.Step) * d.Step;
-            if (d.IsInt) v = Math.Round(v);
-            return Math.Clamp(v, d.Min, d.Max);
+            return d.FromFraction(pos / 1000.0);
         }
 
         private static int ValueToPos(ParamDef d, double v)
         {
-            v = Math.Clamp(v, d.Min, d.Max);
-            double frac = d.Log ? Math.Log(v / d.Min) / Math.Log(d.Max / d.Min) : (v - d.Min) / (d.Max - d.Min);
-            return (int)Math.Round(Math.Clamp(frac, 0, 1) * 1000);
+            return (int)Math.Round(d.ToFraction(v) * 1000.0);
         }
 
         // ---------- запуск ----------
@@ -378,15 +439,19 @@ namespace SimpleDeHaze.Gui
         {
             if (_input is null) { MessageBox.Show(this, "Сначала выберите изображение."); return; }
             var input = _input.Clone();
+            Mat? gt = _gt?.Mat.Clone();
+            var goal = CurrentTuneGoal();
+            if (goal == AutoTuneGoal.Reference && gt == null) goal = AutoTuneGoal.ObjectVisibility;
             _tuneCts = new System.Threading.CancellationTokenSource();
             var token = _tuneCts.Token;
-            SetBusy(true, "Авто-лучший: сканирую методы...");
+            SetBusy(true, $"Авто-лучший: сканирую методы ({GoalText(goal)})...");
             _autoBestBtn.Enabled = true; _autoBestBtn.Text = "Стоп";
             try
             {
                 var (best, tuned, _) = await Task.Run(() => AutoTuner.PickBest(MethodRegistry.All, input,
-                    msg => { if (!IsDisposed) BeginInvoke(() => _status.Text = msg); },
-                    () => token.IsCancellationRequested));
+                    PostStatus,
+                    () => token.IsCancellationRequested,
+                    gt, goal));
                 if (token.IsCancellationRequested) { _status.Text = "Авто-лучший: прервано"; return; }
 
                 int mi = MethodRegistry.All.ToList().FindIndex(m => m.Name == best.Name);
@@ -399,7 +464,7 @@ namespace SimpleDeHaze.Gui
             {
                 _tuneCts.Dispose(); _tuneCts = null;
                 _autoBestBtn.Text = "Авто-лучший";
-                input.Dispose(); SetBusy(false);
+                gt?.Dispose(); input.Dispose(); SetBusy(false);
             }
         }
 
@@ -410,15 +475,19 @@ namespace SimpleDeHaze.Gui
             if (!method.Parameters.Any(p => p.Search)) { _status.Text = "У метода нет параметров для авто-подбора"; return; }
             var cur = new Dictionary<string, double>(_values);
             var input = _input.Clone();
-            SetBusy(true, "Подбор параметров по метрике...");
+            Mat? gt = _gt?.Mat.Clone();
+            var goal = CurrentTuneGoal();
+            if (goal == AutoTuneGoal.Reference && gt == null) goal = AutoTuneGoal.ObjectVisibility;
+            int evalDim = _fullEvalCheck.Checked ? Math.Max(input.Width, input.Height) : 480;
+            SetBusy(true, $"Подбор параметров ({GoalText(goal)}{(_fullEvalCheck.Checked ? ", оригинал" : "")})...");
             try
             {
-                var best = await Task.Run(() => AutoTuner.Optimize(method, input, cur));
+                var best = await Task.Run(() => AutoTuner.Optimize(method, input, cur, gt, goal, evalDim));
                 ApplyValues(best);
                 await ComputeAndShow(method, best, "Авто-параметры -> ");
             }
             catch (Exception ex) { MessageBox.Show(this, ex.ToString(), "Ошибка подбора"); }
-            finally { input.Dispose(); SetBusy(false); }
+            finally { gt?.Dispose(); input.Dispose(); SetBusy(false); }
         }
 
         private async Task TuneThoroughAsync()
@@ -428,17 +497,22 @@ namespace SimpleDeHaze.Gui
             if (method.Parameters.Count == 0) { _status.Text = "У метода нет параметров для подбора"; return; }
             var cur = new Dictionary<string, double>(_values);
             var input = _input.Clone();
+            Mat? gt = _gt?.Mat.Clone();
+            var goal = CurrentTuneGoal();
+            if (goal == AutoTuneGoal.Reference && gt == null) goal = AutoTuneGoal.ObjectVisibility;
             double minColor = _keepColorCheck.Checked ? 1.2 : 0.0;   // 'не гасить цвет' -> пол насыщенности
+            int evalDim = _fullEvalCheck.Checked ? Math.Max(input.Width, input.Height) : 340;
             _tuneCts = new System.Threading.CancellationTokenSource();
             var token = _tuneCts.Token;
-            SetBusy(true, "Тщательный подбор" + (minColor > 0 ? " (цель: не гасить цвет)" : "") + "... нажмите 'Стоп', чтобы прервать");
+            SetBusy(true, "Тщательный подбор: " + GoalText(goal) + (minColor > 0 ? " + цвет>=1.2" : "") + (_fullEvalCheck.Checked ? " + оригинал" : "") + "... нажмите 'Стоп', чтобы прервать");
             _tuneBtn.Enabled = true; _tuneBtn.Text = "Стоп";          // оставляем активной - для отмены
             try
             {
                 int last = 0;
                 var best = await Task.Run(() => AutoTuner.OptimizeThorough(method, input, cur, minColor,
-                    (e, s) => { if (e - last < 3 || IsDisposed) return; last = e; BeginInvoke(() => _status.Text = $"Тщательный подбор... попыток {e}, лучший скор {s:F1}"); },
-                    () => token.IsCancellationRequested));
+                    (e, s) => { if (e - last < 3 || IsDisposed) return; last = e; PostStatus($"Тщательный подбор ({GoalText(goal)})... попыток {e}, лучший скор {s:F1}"); },
+                    () => token.IsCancellationRequested,
+                    gt: gt, goal: goal, evalMaxDim: evalDim));
                 ApplyValues(best);
                 await ComputeAndShow(method, best, token.IsCancellationRequested ? "Прервано -> " : "Тщательный подбор -> ");
             }
@@ -447,13 +521,27 @@ namespace SimpleDeHaze.Gui
             {
                 _tuneCts.Dispose(); _tuneCts = null;
                 _tuneBtn.Text = "Тщательный подбор";
-                input.Dispose(); SetBusy(false);
+                gt?.Dispose(); input.Dispose(); SetBusy(false);
             }
         }
 
+        private AutoTuneGoal CurrentTuneGoal() => _tuneGoalCombo.SelectedIndex switch
+        {
+            0 => AutoTuneGoal.Reference,
+            2 => AutoTuneGoal.Vivid,
+            _ => AutoTuneGoal.ObjectVisibility
+        };
+
+        private static string GoalText(AutoTuneGoal goal) => goal switch
+        {
+            AutoTuneGoal.Reference => "GT PSNR/SSIM/ΔE/цвет",
+            AutoTuneGoal.Vivid => "сочно/контраст",
+            _ => "объекты/контуры"
+        };
+
         // ---------- прогон всех методов (бенчмарк) ----------
 
-        internal readonly record struct BenchRow(string Name, string Mode, bool Ok, Metrics.Report Rep, long Ms, string? Error);
+        internal readonly record struct BenchRow(string Name, string Mode, bool Ok, Metrics.Report Rep, long Ms, double MsPerMp, string? Error);
 
         private void BuildBenchColumns()
         {
@@ -461,11 +549,16 @@ namespace SimpleDeHaze.Gui
             AddBenchCol("name", "Метод", 134, false, null, typeof(string));
             AddBenchCol("mode", "Парам.", 50, false, null, typeof(string));
             AddBenchCol("score", "Оценка", 50, true, "0", typeof(double));
-            AddBenchCol("psnrRaw", "сырой", 52, true, "0.00", typeof(double));
-            AddBenchCol("psnr", "совмещ", 58, true, "0.00", typeof(double));
+            AddBenchCol("psnrRaw", "PSNR", 52, true, "0.00", typeof(double));
+            AddBenchCol("psnr", "align диагн.", 72, true, "0.00", typeof(double));
+            AddBenchCol("mse", "MSE", 56, true, "0", typeof(double));
             AddBenchCol("ssim", "SSIM", 46, true, "0.000", typeof(double));
+            AddBenchCol("de00", "DE00", 50, true, "0.00", typeof(double));
+            AddBenchCol("naturalnessDev", "натур.Δ", 56, true, "0.0", typeof(double));
+            AddBenchCol("artifactDev", "артеф.Δ", 56, true, "0.0", typeof(double));
             AddBenchCol("haze", "дымка", 50, true, "0", typeof(double));
             AddBenchCol("color", "цветx", 42, true, "0.00", typeof(double));
+            AddBenchCol("msmp", "мс/Мп", 52, true, "0", typeof(double));
             AddBenchCol("ms", "мс", 40, true, "0", typeof(double));
         }
 
@@ -497,7 +590,7 @@ namespace SimpleDeHaze.Gui
             try
             {
                 var rows = await Task.Run(() => RunBenchCore(methods, img, gt,
-                    d => { if (!IsDisposed) BeginInvoke(() => _status.Text = $"Прогон методов... {d}/{total}"); }));
+                    d => PostStatus($"Прогон методов... {d}/{total}")));
 
                 foreach (var r in rows.OrderByDescending(x => x.Ok ? x.Rep.Score : double.NegativeInfinity))
                     AddBenchRow(r);
@@ -577,12 +670,14 @@ namespace SimpleDeHaze.Gui
                 using var res = m.Process(img, p);
                 sw.Stop();
                 var rep = Metrics.Evaluate(res, gt, img.Mat);
-                return new BenchRow(m.Name, mode, true, rep, sw.ElapsedMilliseconds, null);
+                double mp = img.Width * img.Height / 1_000_000.0;
+                return new BenchRow(m.Name, mode, true, rep, sw.ElapsedMilliseconds, sw.ElapsedMilliseconds / Math.Max(1e-6, mp), null);
             }
             catch (Exception ex)
             {
                 sw.Stop();
-                return new BenchRow(m.Name, mode, false, default, sw.ElapsedMilliseconds,
+                double mp = img.Width * img.Height / 1_000_000.0;
+                return new BenchRow(m.Name, mode, false, default, sw.ElapsedMilliseconds, sw.ElapsedMilliseconds / Math.Max(1e-6, mp),
                     (ex.GetType().Name + ": " + ex.Message).Replace(';', ',').Replace('\r', ' ').Replace('\n', ' '));
             }
         }
@@ -595,10 +690,14 @@ namespace SimpleDeHaze.Gui
                     r.Name, r.Mode, Math.Round(r.Rep.Score),
                     r.Rep.HasRef ? r.Rep.Psnr : null,
                     r.Rep.HasRef ? r.Rep.PsnrAligned : null,
-                    r.Rep.HasRef ? r.Rep.SsimAligned : null,
-                    Math.Round(r.Rep.HazeRemoved * 100), r.Rep.ColorRatio, (double)r.Ms
+                    r.Rep.HasRef ? r.Rep.Mse : null,
+                    r.Rep.HasRef ? r.Rep.Ssim : null,
+                    r.Rep.HasRef ? r.Rep.Ciede2000 : null,
+                    r.Rep.NaturalnessDev,
+                    r.Rep.ArtifactDev,
+                    Math.Round(r.Rep.HazeRemoved * 100), r.Rep.ColorRatio, r.MsPerMp, (double)r.Ms
                 }
-                : new object?[] { $"{r.Name} - FAIL", r.Mode, null, null, null, null, null, null, (double)r.Ms };
+                : new object?[] { $"{r.Name} - FAIL", r.Mode, null, null, null, null, null, null, null, null, null, null, null, (double)r.Ms };
 
             int i = _benchGrid.Rows.Add(vals!);
             var row = _benchGrid.Rows[i];
@@ -607,7 +706,7 @@ namespace SimpleDeHaze.Gui
             if (r.Mode == "авто") row.Cells[1].Style.BackColor = Color.FromArgb(225, 235, 250);
             row.Cells[2].Style.BackColor = Lerp(Color.White, Color.FromArgb(150, 215, 150), Math.Clamp(r.Rep.Score / 70.0, 0, 1));
             row.Cells[2].Style.Font = _gridBold;
-            if (r.Rep.ColorRatio > 1.5) row.Cells[7].Style.ForeColor = Color.Red;
+            if (r.Rep.ColorRatio > 1.5) row.Cells[11].Style.ForeColor = Color.Red;
         }
 
         private void SelectMethodFromGrid(int rowIndex)
@@ -649,7 +748,7 @@ namespace SimpleDeHaze.Gui
             static string Num(double v, System.Globalization.CultureInfo c) => double.IsNaN(v) ? "" : v.ToString("0.######", c);
 
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("Метод;Режим;Оценка;PSNR_сырой;PSNR_совмещ;SSIM_сырой;SSIM_совмещ;Дымка_убрана_%;Контраст_x;Грани_x;Пересвет_%;Цвет_x;мс;OK;Ошибка");
+            sb.AppendLine("Метод;Режим;Оценка;PSNR_сырой;PSNR_совмещ;MSE_сырой;MSE_совмещ;SSIM_сырой;SSIM_совмещ;CIEDE2000_сырой;CIEDE2000_совмещ;natur_dev_own;artifact_dev_own;Дымка_убрана_%;Контраст_x;Грани_x;Пересвет_%;Цвет_x;мс_на_Мп;мс;OK;Ошибка");
             foreach (var r in rows.OrderByDescending(x => x.Ok ? x.Rep.Score : double.NegativeInfinity))
             {
                 var p = r.Rep;
@@ -657,11 +756,11 @@ namespace SimpleDeHaze.Gui
                 string[] f = r.Ok
                     ? new[]
                     {
-                        r.Name, r.Mode, Num(p.Score, ci), Ref(p.Psnr), Ref(p.PsnrAligned), Ref(p.Ssim), Ref(p.SsimAligned),
+                        r.Name, r.Mode, Num(p.Score, ci), Ref(p.Psnr), Ref(p.PsnrAligned), Ref(p.Mse), Ref(p.MseAligned), Ref(p.Ssim), Ref(p.SsimAligned), Ref(p.Ciede2000), Ref(p.Ciede2000Aligned), Num(p.NaturalnessDev, ci), Num(p.ArtifactDev, ci),
                         Num(p.HazeRemoved * 100, ci), Num(p.ContrastGain, ci), Num(p.EdgeGain, ci), Num(p.ClipPct, ci), Num(p.ColorRatio, ci),
-                        r.Ms.ToString(ci), "1", ""
+                        Num(r.MsPerMp, ci), r.Ms.ToString(ci), "1", ""
                     }
-                    : new[] { r.Name, r.Mode, "", "", "", "", "", "", "", "", "", "", r.Ms.ToString(ci), "0", r.Error ?? "" };
+                    : new[] { r.Name, r.Mode, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", r.Ms.ToString(ci), "0", r.Error ?? "" };
                 sb.AppendLine(string.Join(";", f));
             }
             return sb.ToString();
@@ -670,8 +769,62 @@ namespace SimpleDeHaze.Gui
         private void SetBusy(bool busy, string? status = null)
         {
             _busy = busy;
-            _runBtn.Enabled = _autoBestBtn.Enabled = _autoBtn.Enabled = _tuneBtn.Enabled = _benchBtn.Enabled = _defBtn.Enabled = _methodCombo.Enabled = !busy;
+            _runBtn.Enabled = _autoBestBtn.Enabled = _autoBtn.Enabled = _tuneBtn.Enabled = _benchBtn.Enabled = _defBtn.Enabled = _methodCombo.Enabled = _tuneGoalCombo.Enabled = _playBtn.Enabled = !busy;
             if (status != null) _status.Text = status;
+        }
+
+        private void PostStatus(string text)
+        {
+            if (IsDisposed) return;
+            try
+            {
+                if (InvokeRequired)
+                {
+                    if (!IsHandleCreated) return;
+                    BeginInvoke((Action)(() =>
+                    {
+                        if (!IsDisposed) _status.Text = text;
+                    }));
+                }
+                else
+                {
+                    _status.Text = text;
+                }
+            }
+            catch (InvalidOperationException) { }
+        }
+
+        /// <summary>Открыть «Песочницу» с текущим результатом (или входом, если результата ещё нет).</summary>
+        private void OpenPlayground()
+        {
+            Mat src8;
+            if (_lastResult != null) { src8 = new Mat(); _lastResult.ConvertTo(src8, DepthType.Cv8U, 255.0); }
+            else if (_input != null) src8 = _input.Mat.Clone();
+            else { MessageBox.Show(this, "Сначала выберите изображение (или нажмите 'Вычислить')."); return; }
+            try
+            {
+                var pf = new PlaygroundForm(src8, ApplyEditedResult);   // форма клонирует src внутри
+                pf.Show(this);
+            }
+            finally { src8.Dispose(); }
+        }
+
+        /// <summary>Применить отредактированное в песочнице изображение как текущий результат.</summary>
+        internal void ApplyEditedResult(Mat edited8)
+        {
+            // не трогаем _lastResult, пока идёт вычисление/подбор - иначе гонка с ComputeAndShow
+            if (_busy) { _status.Text = "Идёт вычисление - примените из песочницы после его завершения."; return; }
+            try
+            {
+                var f = new Mat();
+                edited8.ConvertTo(f, DepthType.Cv32F, 1.0 / 255.0);
+                _lastResult?.Dispose();
+                _lastResult = f;
+                _saveBtn.Enabled = true;
+                _resultView.Image = MatToBitmap(edited8);
+                _status.Text = "Применён фильтр из песочницы (можно 'Сохранить...')";
+            }
+            catch (Exception ex) { MessageBox.Show(this, ex.Message, "Не удалось применить"); }
         }
 
         private void SaveResult()

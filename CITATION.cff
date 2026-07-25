@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: "SimpleDeHaze: a reproducible .NET testbed for classical non-learning single-image dehazing"
+message: "If you use this software or its benchmark results, please cite it."
+type: software
+authors:
+  - family-names: Sitnikov
+    given-names: Maksim
+repository-code: "https://github.com/yellow444/SimpleDehaze"
+abstract: >-
+  SimpleDeHaze is a .NET/Emgu.CV testbed for classical, non-learning single-image dehazing.
+  It provides a common method interface, a canonical Dark Channel Prior baseline, interchangeable
+  transmission refiners, CPU and CUDA paths, a headless benchmark with primary (non-aligned)
+  full-reference metrics, and numerical consistency tests for the physical claims made in the
+  documentation. Novelty statements for individual methods are tracked in NOVELTY.md.
+keywords:
+  - image dehazing
+  - dark channel prior
+  - atmospheric scattering model
+  - reproducible research
+  - .NET
+  - Emgu.CV
+license: MIT

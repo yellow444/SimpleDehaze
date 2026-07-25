@@ -14,6 +14,8 @@ namespace SimpleDeHaze.Methods
             "DCP, но карта t уточняется Fast Global Smoother (Min et al., 2014) - быстрый\n" +
             "аппроксиматор WLS/edge-aware сглаживания через последовательность 1D-задач.\n" +
             "Ближе к WLS-качеству, чем guided filter, но проще и быстрее полного sparse-solve.\n\n" +
+            "Формула: t_raw = 1 − ω·min_c min_Ω(I_c/A_c); t = FGS(t_raw | I, λ, σ_color)\n" +
+            "(быстрая WLS-аппроксимация); J = (I − A)/max(t, t_min) + A.\n\n" +
             "Параметры: λ - гладкость; σ_color - чувствительность к краям; ω, patch - DCP.";
 
         public IReadOnlyList<ParamDef> Parameters { get; } = new[]

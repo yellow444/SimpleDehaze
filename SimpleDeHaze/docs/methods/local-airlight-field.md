@@ -15,6 +15,10 @@ $$I(x)=t(x)J(x)+(1-t(x))A(x).$$
 > Статус: **реализовано** - `DCP - Local Airlight Field`
 > ([`LocalAirlightMethod.cs`](../../Methods/LocalAirlightMethod.cs)): поле $A_c(x)=\mathrm{blur}(q\cdot I_c)/\mathrm{blur}(q)$,
 > затем DCP по $I/A(x)$ и восстановление с $A(x)$.
+>
+> Также реализован low-res регуляризованный вариант из TEMP.md:
+> [`LAF-TV/WLS (low-res airlight)`](laf-tv.md)
+> ([`LafTvMethod.cs`](../../Methods/LafTvMethod.cs)).
 
 ## Идея
 

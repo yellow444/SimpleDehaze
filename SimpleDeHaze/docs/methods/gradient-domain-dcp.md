@@ -12,6 +12,11 @@ Poisson задачу.
 > Статус: **реализовано** - `DCP - Gradient Domain`
 > ([`GradientDomainMethod.cs`](../../Methods/GradientDomainMethod.cs)): screened-Poisson
 > поканально итерациями Якоби (быстрый вариант из раздела ниже).
+>
+> Дополнительно реализован вариант из `TEMP.md` - `GDR-SP (screened Poisson recovery)`
+> ([`GdrSpMethod.cs`](../../Methods/GdrSpMethod.cs)): objective
+> $\mu\lVert J-J_0\rVert^2+\lambda\lVert\nabla J-s\nabla I\rVert^2$,
+> где $s=\min(1/(t+\varepsilon),s_{\max})$.
 
 ## Идея
 
@@ -110,6 +115,39 @@ $$
 $$J^{k+1}=\frac{\mu J_0+\lambda\,\text{neighbor/gradient terms}}{\mu+4\lambda}.$$
 
 Это уже похоже на WLS и хорошо ложится на существующие итеративные CPU/GPU уточнители.
+
+## GDR-SP из TEMP.md
+
+`GDR-SP (screened Poisson recovery)` отделяет оценку трансмиссии от recovery-stage. Сначала
+берём обычный DCP:
+
+$$
+t=1-\omega\,\operatorname{dark}(I/A),\qquad J_0=\operatorname{Recover}(I,t,A).
+$$
+
+Затем решаем:
+
+$$
+\min_J
+\sum_x \mu(x)\lVert J(x)-J_0(x)\rVert^2
++\lambda\sum_x\lVert\nabla J(x)-s(x)\nabla I(x)\rVert^2,
+$$
+
+$$
+s(x)=\min\left(\frac{1}{t(x)+\varepsilon},s_{\max}\right),
+\qquad
+\mu(x)=\mu_0+\mu_1t(x).
+$$
+
+Euler-Lagrange даёт screened-Poisson систему:
+
+$$
+(\mu-\lambda\Delta)J=\mu J_0-\lambda\,\operatorname{div}(s\nabla I).
+$$
+
+В реализации система решается поканально итерациями Якоби. Это не нейросетевой postprocess,
+а вариационная регуляризация: результат остаётся близким к физическому восстановлению `J0`,
+но градиенты не получают резких halo от маленьких ошибок карты `t`.
 
 ## Связь с проектом
 

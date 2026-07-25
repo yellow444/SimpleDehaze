@@ -5,8 +5,9 @@ Color Cube). Это быстрый edge-aware фильтр, но у него е�
 сильных границ** - и есть готовые улучшения. Здесь собраны его варианты как кандидаты на
 замену `XImgprocInvoke.GuidedFilter` / GPU-[`Filter`](../../DeHazeGPU.cs).
 
-> Статус: базовый GF и **WGIF** - **реализованы** (`DCP - Weighted Guided Filter`,
-> [`Refiners.Wgif`](../../Methods/Refiners.cs)); GDGIF и Fast GF - кандидаты.
+> Статус: базовый GF, **Fast GF** и **WGIF** - **реализованы**
+> ([`Refiners.FastGuided`](../../Methods/Refiners.cs), `DCP - Weighted Guided Filter`,
+> [`Refiners.Wgif`](../../Methods/Refiners.cs)); GDGIF остаётся кандидатом.
 
 ## База: Guided Filter (He, 2010)
 
@@ -51,9 +52,9 @@ IEEE TIP 2015.
 | Фильтр | Идея | Ореолы | Скорость | В проекте |
 |---|---|---|---|---|
 | Guided Filter | глоб. $\varepsilon$ | бывают у краёв | быстро | **есть** (дефолт) |
-| WGIF | адаптивный $\varepsilon/\Gamma$ | заметно меньше | ~ как GF | кандидат |
+| WGIF | адаптивный $\varepsilon/\Gamma$ | заметно меньше | ~ как GF | **есть** |
 | GDGIF | + градиентный член | минимум | чуть медленнее | кандидат |
-| Fast GF | subsample $a,b$ | как у базового | $\times s^2$ быстрее | кандидат (preview/видео) |
+| Fast GF | downsample -> GF -> upsample | как у базового | $\times s^2$ быстрее | **есть** (`Refiners.FastGuided`) |
 
 ```mermaid
 flowchart LR
@@ -69,9 +70,9 @@ flowchart LR
   [`ColorCubeMethod`](../../Methods/ColorCubeMethod.cs);
 - GPU: ручной цветной guided filter [`DeHazeGPU.Filter`](../../DeHazeGPU.cs).
 
-Практичный план: WGIF - наименьшая правка с заметным выигрышем по ореолам; Fast GF - для
-preview-режима из [fast-dcp-engine.md](fast-dcp-engine.md); GDGIF - если нужны идеальные
-тонкие границы. Все совместимы с текущим $\tilde t$ из [`DehazeCore.RawTransmission`](../../Methods/DehazeCore.cs).
+Практичный план дальше: WGIF - если важнее меньше halo, Fast GF - для preview/video и
+первых релизов BRACE/PF-SFGF, GDGIF - если нужны идеальные тонкие границы. Все совместимы
+с текущим $\tilde t$ из [`DehazeCore.RawTransmission`](../../Methods/DehazeCore.cs).
 
 ## Источники
 

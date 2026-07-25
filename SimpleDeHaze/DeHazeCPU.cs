@@ -120,11 +120,17 @@ namespace SimpleDeHaze
             return new MCvScalar(atmosphericLightB, atmosphericLightG, atmosphericLightR);
         }
 
+        /// <summary>
+        /// ВНИМАНИЕ: это НЕ тёмный канал. Здесь считается ПОКАНАЛЬНЫЙ локальный минимум
+        /// m_c(x) = min_{y in Omega} I_c(y) - три отдельные карты, без минимума по B,G,R.
+        /// Канонический DCP (He et al.) сначала берёт min по каналам, и только потом минимум по окну;
+        /// см. <see cref="Methods.CanonicalDcpMethod"/>. Раньше здесь стояло CvInvoke.Min(bgr, bgr, dst) -
+        /// минимум матрицы с самой собой, то есть просто копия; заменено на явное копирование,
+        /// чтобы код не выглядел как поканальная свёртка минимума.
+        /// </summary>
         private Mat ComputeColorsChannelPatch(Image<Bgr, float> srcImage, int patch, string name = "")
         {
-            var bgrChannels = srcImage.Clone().Mat;
-            var colorsChannel = new Mat();
-            CvInvoke.Min(bgrChannels, bgrChannels, colorsChannel);
+            var colorsChannel = srcImage.Mat.Clone();   // 3 канала: дальше эрозия идёт по каждому отдельно
             CvInvoke.Erode(colorsChannel, colorsChannel, null, new Point(-1, -1), patch, BorderType.Reflect101, default);
             Show("ComputeColorsChannelPatch" + name, colorsChannel * 255);
             return colorsChannel;
@@ -171,10 +177,15 @@ namespace SimpleDeHaze
             var image = srcImage.Clone();
             while (image.Width / 2 > windowSize && image.Height / 2 > windowSize)
             {
-                Rectangle roi1 = new(0, 0, (image.Width) / 2, (image.Height) / 2);
-                Rectangle roi2 = new((image.Width) / 2, 0, (image.Width - 1), (image.Height) / 2);
-                Rectangle roi3 = new((image.Width) / 2, (image.Height) / 2, (image.Width - 1), (image.Height - 1));
-                Rectangle roi4 = new(0, (image.Height) / 2, (image.Width) / 2, (image.Height - 1));
+                // Ширина/высота ПРАВЫХ и НИЖНИХ квадрантов - остаток кадра (W - W/2), а не W-1:
+                // при нечётной стороне W-1 выходит за границу от x=W/2. Раньше это спасал клиппинг ROI
+                // внутри OpenCV, но размер квадранта был неявным.
+                int hw = image.Width / 2, hh = image.Height / 2;
+                int rw = image.Width - hw, rh = image.Height - hh;
+                Rectangle roi1 = new(0, 0, hw, hh);
+                Rectangle roi2 = new(hw, 0, rw, hh);
+                Rectangle roi3 = new(hw, hh, rw, rh);
+                Rectangle roi4 = new(0, hh, hw, rh);
                 image.ROI = roi1;
                 Mat imagePart1 = image.Mat.Clone();
                 image.ROI = roi2;

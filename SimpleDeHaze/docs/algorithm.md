@@ -1,8 +1,20 @@
-# Алгоритм, реализованный в проекте
+# Legacy DCP pipeline (`DeHazeCPU` / `DeHazeGPU`)
 
-Проект убирает дымку методом **Dark Channel Prior (DCP)** с оптимизированной оценкой
-атмосферного света (через quad-decomposition) и уточнением карты пропускания
-**направляющим фильтром (Guided Filter)**. Реализованы две идентичные по логике версии:
+Эта страница описывает **исторический pipeline** проекта: классы [`DeHazeCPU`](../DeHazeCPU.cs)
+и [`DeHazeGPU`](../DeHazeGPU.cs) с методом `RemoveHaze(...)`.
+
+В репозитории сейчас есть две линии:
+
+- **legacy pipeline** - эта страница: quad-decomposition, поканальная экспоненциальная
+  трансмиссия и Guided Filter;
+- **current methods framework** - каталог [`Methods/`](../Methods), общий
+  [`DehazeCore`](../Methods/DehazeCore.cs), реестр [`MethodRegistry`](../Methods/MethodRegistry.cs)
+  и набор сравнимых методов: DCP, CAP-HSV, RFEP-DCP, BRACE-DCP, PF-SFGF, LAF-TV/WLS,
+  GDR-SP, Gradient Domain, Retinex/CLAHE и другие. Подробности - [`docs/methods/README.md`](methods/README.md).
+
+Legacy pipeline убирает дымку методом **Dark Channel Prior (DCP)** с оптимизированной оценкой
+атмосферного света через quad-decomposition и уточнением карты пропускания
+**направляющим фильтром (Guided Filter)**. Реализованы две близкие по логике версии:
 
 - [`DeHazeCPU`](../DeHazeCPU.cs) - на `Mat` / OpenCV (CPU);
 - [`DeHazeGPU`](../DeHazeGPU.cs) - на `GpuMat` / CUDA (GPU), с собственной реализацией
@@ -53,7 +65,7 @@ function RemoveHaze(img_bgr, β, patch, decompSize, t_min, percen, refineSize, e
     for c in {B,G,R}:  m_c <- Erode( I_c, patch )
 
     # 5. оценка трансмиссии (по каналам)
-    for c in {B,G,R}:  t_c <- clip( 1 - exp(-β - A_c / m_c), 0, 1 )
+    for c in {B,G,R}:  t_c <- clip( 1 - exp(-β * A_c / m_c), 0, 1 )
 
     # 6. уточнение карты по структуре исходного кадра
     t <- GuidedFilter(guide = I, src = t, r = refineSize, eps = eps)

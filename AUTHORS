@@ -1,0 +1,18 @@
+Maksim Sitnikov — автор проекта, реализация и эксперименты
+
+Отдельная благодарность:
+
+* комментаторам первой статьи на Хабре (habr.com/ru/articles/810577), указавшим на три
+  содержательные проблемы: обработку в гамма-кодированном sRGB вместо линейного радианса,
+  физический смысл зависимости рассеяния от длины волны и выбор цветового пространства
+  с отдельной компонентой яркости;
+* mirasnowfox (mirasnowfox.ru) — схема атмосферного света в первой статье.
+
+Использованные сторонние работы (реализации и данные), см. также NOVELTY.md:
+
+* He, Sun, Tang. Single Image Haze Removal Using Dark Channel Prior.
+* He, Sun, Tang. Guided Image Filtering; Fast Guided Filter.
+* Meng, Wang, Duan, Xiang, Pan. Efficient Image Dehazing with Boundary Constraint and
+  Contextual Regularization, ICCV 2013 — граница допустимости трансмиссии.
+* Ancuti et al. O-HAZE — набор из 45 реальных пар, включённый в репозиторий как dataset/ + hazefree/.
+* Emgu.CV / OpenCV — вычислительная основа.

@@ -4,6 +4,9 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- Новый GUI (Gui/NewMainWindow.xaml) - на WPF, старый MainForm остаётся на WinForms.
+         Обе desktop-технологии живут в одном проекте; точку входа выбирает Program.Main. -->
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
@@ -13,6 +16,24 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
   </PropertyGroup>
+
+  <!-- UseWPF добавляет System.Windows.* в implicit usings, из-за чего в WinForms-файлах
+       становятся неоднозначными Application, Label, Button, Panel, Cursors и т.п.
+       Убираем их: WPF-файлы (Gui/*Modern*) подключают нужные namespace явными using. -->
+  <ItemGroup>
+    <Using Remove="System.Windows" />
+    <Using Remove="System.Windows.Controls" />
+    <Using Remove="System.Windows.Data" />
+    <Using Remove="System.Windows.Documents" />
+    <Using Remove="System.Windows.Input" />
+    <Using Remove="System.Windows.Media" />
+    <Using Remove="System.Windows.Media.Imaging" />
+    <Using Remove="System.Windows.Navigation" />
+    <Using Remove="System.Windows.Shapes" />
+    <!-- UseWPF также убирает System.IO из implicit usings (из-за пары System.IO.Path /
+         System.Windows.Shapes.Path). Раз System.Windows.Shapes мы не подключаем - возвращаем. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Update="dataset\01_outdoor_hazy.jpg">
@@ -293,6 +314,10 @@
          локального фида localpackages\, который наполняет tools\fetch-emgu-packages.ps1
          (качает официальный GitHub-релиз Emgu). Гигабайты в git не хранятся. -->
     <PackageReference Include="Emgu.CV.runtime.windows.cuda" Version="4.8.0.5324" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SimpleDeHaze.Tests" />
   </ItemGroup>
 
   <!-- Понятное предупреждение, если бутстрап ещё не запускали -->
