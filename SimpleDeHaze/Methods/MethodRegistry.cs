@@ -12,6 +12,7 @@ namespace SimpleDeHaze.Methods
             new DcpCpuMethod(),
             new DcpGpuMethod(),
             new HsvCapMethod(),
+            new HsvC3rMethod(),
             // DCP с разными уточнителями карты t
             new FractionalMethod(),
             new BeltramiMethod(),
