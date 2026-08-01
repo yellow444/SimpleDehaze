@@ -30,7 +30,7 @@ namespace SimpleDeHaze.Methods
                     _ => definition.Default,
                 }, definition.Step, definition.IsInt, definition.Log,
                 definition.Search || definition.Key is "uNoise" or "uUnc" or "uLimit",
-                definition.Tunable))
+                definition.Tunable || definition.Key is "uNoise" or "uUnc" or "uRadius" or "uLimit"))
             .ToArray();
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> parameters)

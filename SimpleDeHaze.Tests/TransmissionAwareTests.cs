@@ -97,12 +97,24 @@ public sealed class TransmissionAwareTests
 
     public void RegisteredHsvUtawVariant_ExposesOnlyEffectiveSearchCoordinates()
     {
+        var generic = new TransScaleLaplacianMethod();
+        foreach (string key in new[] { "edgeS", "edgeR", "uNoise", "uUnc", "uRadius", "uLimit" })
+            TestAssert.False(generic.Parameters.Single(parameter => parameter.Key == key).Tunable,
+                $"generic basis-specific coordinate {key} must stay fixed during auto-tuning");
+
+        var edge = new TransmissionAwareHsvEdgeMethod();
+        foreach (string key in new[] { "edgeS", "edgeR" })
+            TestAssert.True(edge.Parameters.Single(parameter => parameter.Key == key).Tunable);
+
         var method = new TransmissionAwareHsvUtawMethod();
         TestAssert.False(method.Parameters.Any(parameter => parameter.Key is
             "space" or "basis" or "wiener" or "edgeS" or "edgeR"));
         foreach (string key in new[] { "uNoise", "uUnc", "uLimit" })
+        {
             TestAssert.True(method.Parameters.Single(parameter => parameter.Key == key).Search,
                 $"{key} must participate in quick AutoTuner search");
+            TestAssert.True(method.Parameters.Single(parameter => parameter.Key == key).Tunable);
+        }
         TestAssert.False(method.Parameters.Single(parameter => parameter.Key == "uRadius").Search);
         TestAssert.True(method.Parameters.Single(parameter => parameter.Key == "uRadius").Tunable);
     }

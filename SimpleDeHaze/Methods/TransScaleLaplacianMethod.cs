@@ -68,12 +68,12 @@ namespace SimpleDeHaze.Methods
             new ParamDef("rough",   "Шероховатость: 0=2 масштаба, 1=МНК по 5", 0, 1, 0, 1, isInt: true, tunable: false),
             new ParamDef("space",   "Полосы: 0=Lab-L, 1=HSV-V",    0, 1, 0, 1, isInt: true, tunable: false),
             new ParamDef("basis",   "Базис: 0=Laplacian, 1=edge, 2=UTAW CPU, 3=UTAW GPU", 0, 3, 0, 1, isInt: true, tunable: false),
-            new ParamDef("edgeS",   "Edge bands: базовый spatial scale", 4, 48, 12),
-            new ParamDef("edgeR",   "Edge bands: range scale",    0.03, 0.5, 0.18),
-            new ParamDef("uNoise",  "UTAW: σ шума",                 0, 0.05, 0.004),
-            new ParamDef("uUnc",    "UTAW: штраф CAP↔DCP",          0, 10, 1.0),
-            new ParamDef("uRadius", "UTAW: радиус энергии",         0, 12, 3, 1, isInt: true),
-            new ParamDef("uLimit",  "UTAW: предел delta полосы", 0.005, 0.15, 0.04),
+            new ParamDef("edgeS",   "Edge bands: базовый spatial scale", 4, 48, 12, tunable: false),
+            new ParamDef("edgeR",   "Edge bands: range scale",    0.03, 0.5, 0.18, tunable: false),
+            new ParamDef("uNoise",  "UTAW: σ шума",                 0, 0.05, 0.004, tunable: false),
+            new ParamDef("uUnc",    "UTAW: штраф CAP↔DCP",          0, 10, 1.0, tunable: false),
+            new ParamDef("uRadius", "UTAW: радиус энергии",         0, 12, 3, 1, isInt: true, tunable: false),
+            new ParamDef("uLimit",  "UTAW: предел delta полосы", 0.005, 0.15, 0.04, tunable: false),
         };
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)

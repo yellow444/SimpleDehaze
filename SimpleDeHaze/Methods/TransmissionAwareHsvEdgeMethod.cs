@@ -46,7 +46,7 @@ namespace SimpleDeHaze.Methods
                 definition.IsInt,
                 definition.Log,
                 definition.Search,
-                definition.Tunable))
+                definition.Tunable || definition.Key is "edgeS" or "edgeR"))
             .ToArray();
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> parameters)
