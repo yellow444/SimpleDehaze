@@ -79,7 +79,6 @@ namespace SimpleDeHaze.Methods
         {
             "A²CR-Dehaze (dual-gain recovery, эксперимент)",
             "HSV²CR (круговая цветность + A²CR, эксперимент)",
-            "C³R-HSV: uncertainty-aware recovery (EXP)",
             "HSV + многомасштабная шероховатость (эксперимент)",
             "Transmission-aware Laplacian (эксперимент)",
             "Color Attenuation+ (адаптивная глубина, баланс белого)",

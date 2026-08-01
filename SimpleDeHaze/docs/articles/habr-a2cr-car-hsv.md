@@ -255,7 +255,7 @@ dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release -- `
 
 Точные команды DIODE, LPIPS, real-paired evaluation, источники и hash находятся в
 `REPRODUCIBILITY.md`. arXiv source лежит в `paper/a2cr-dehaze`, готовый локально проверенный PDF -
-в `output/pdf/a2cr-c3r-preprint.pdf`.
+в `output/pdf/a2cr-recovery-preprint.pdf`.
 
 ## Что дальше
 

@@ -10,14 +10,14 @@ airlight-aligned оператор восстановления с двумя unc
 `(S cos H, S sin H)`, не ломая Hue на границе 0/360°.
 Экспериментальная цилиндрическая ветвь [C³R-HSV](SimpleDeHaze/docs/methods/c3r-hsv.md)
 использует координаты `(V, SV cos H, SV sin H)`, три uncertainty-aware gain и выпуклый
-saturation/value-коридор. Она рассматривается как комплементарная абляция A²CR, а не как
-точная атмосферная модель в HSV.
+saturation/value-коридор. Проверка дала отрицательный результат: метод оставлен для абляций,
+удалён из curated-набора и не рассматривается как точная атмосферная модель в HSV.
 Данные, DIODE scene split, 22 500 controlled recipes, полный прогон 112 500 строк, настоящий LPIPS
 на 364 real-paired результатах и честные отрицательные выводы зафиксированы в
 [A²CR data protocol](SimpleDeHaze/docs/research/a2cr-data-protocol.md).
 
 Публикационные материалы: [arXiv source](paper/a2cr-dehaze/README.md),
-[проверенный объединённый PDF](output/pdf/a2cr-c3r-preprint.pdf),
+[проверенный PDF](output/pdf/a2cr-recovery-preprint.pdf),
 [новая статья для Habr](SimpleDeHaze/docs/articles/habr-a2cr-car-hsv.md),
 [CAR и сцена №08](SimpleDeHaze/docs/methods/car-dehaze.md).
 
