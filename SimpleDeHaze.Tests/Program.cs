@@ -8,6 +8,7 @@ internal static class Program
         var benchmark = new BenchmarkContractTests();
         var a2cr = new A2crTests();
         var c3r = new C3rTests();
+        var transmission = new TransmissionAwareTests();
         var npy = new NpyReaderTests();
         var metrics = new BenchmarkMetricTests();
         var diode = new DiodeFormulaTests();
@@ -42,6 +43,10 @@ internal static class Program
             (nameof(c3r.RiskGain_RecoversInverseAndFallsBackUnderUncertainty), c3r.RiskGain_RecoversInverseAndFallsBackUnderUncertainty),
             (nameof(c3r.ConeProjection_IsFeasibleAndRemainsOnInputCandidateSegment), c3r.ConeProjection_IsFeasibleAndRemainsOnInputCandidateSegment),
             (nameof(c3r.DefaultPipeline_ProducesFiniteFeasibleOutput), c3r.DefaultPipeline_ProducesFiniteFeasibleOutput),
+            (nameof(transmission.BandGate_IsBoundedMonotoneAndCoarseSafe), transmission.BandGate_IsBoundedMonotoneAndCoarseSafe),
+            (nameof(transmission.EdgeAwareBands_UnitGainReconstructsHsvInput), transmission.EdgeAwareBands_UnitGainReconstructsHsvInput),
+            (nameof(transmission.HsvAndEdgeVariants_ProduceFiniteFeasibleOutput), transmission.HsvAndEdgeVariants_ProduceFiniteFeasibleOutput),
+            (nameof(transmission.RegisteredHsvEdgeVariant_FreezesModesAndUsesValidatedDefaults), transmission.RegisteredHsvEdgeVariant_FreezesModesAndUsesValidatedDefaults),
             (nameof(npy.ReadsLittleEndianFloat32Matrix), npy.ReadsLittleEndianFloat32Matrix),
             (nameof(npy.ReadsBooleanMaskAsZeroOne), npy.ReadsBooleanMaskAsZeroOne),
             (nameof(metrics.HueError_IgnoresAchromaticPixelsAndIsZeroForIdentity), metrics.HueError_IgnoresAchromaticPixelsAndIsZeroForIdentity),

@@ -158,6 +158,7 @@ internal static class BenchmarkProfiles
                 Set(p, "colorRestore", 0); Set(p, "smooth", 0); SetMax(method, p, "color");
                 return true;
             case TransScaleLaplacianMethod:
+            case TransmissionAwareHsvEdgeMethod:
                 Set(p, "wb", 0); Set(p, "sat", 0); Set(p, "tone", 0); Set(p, "smooth", 0); SetMax(method, p, "color");
                 return true;
             default:

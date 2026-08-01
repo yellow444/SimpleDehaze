@@ -26,12 +26,14 @@ namespace SimpleDeHaze.Methods
         public string Name => "Transmission-aware Laplacian (эксперимент)";
 
         public string Description =>
-            "Эксперимент: усиление Лапласовых полос по локальному пропусканию t(x), масштабу и шуму.\n" +
-            "Общий пирамидальный принцип известен; проверяемое отличие — конкретный Wiener-like gate.\n\n" +
+            "Эксперимент: усиление многомасштабных полос по локальному пропусканию t(x), масштабу и шуму.\n" +
+            "Общие Laplacian/Gaussian и edge-aware разложения известны; проверяемое отличие — " +
+            "конкретный transmission/scale gate.\n\n" +
             "1. t из ДВУХ приоров: Color Attenuation Prior (exp(-β·d)) и Dark Channel (1-ω·DC), берём min,\n" +
             "   уточняем Guided-фильтром.\n" +
             "2. Восстановление с локальным полем A(x) и защитой хромы.\n" +
-            "3. Лапласиан-пирамида яркости: мелкие полосы усиливаем ТОЛЬКО где t велико (тонкая дымка),\n" +
+            "3. По умолчанию Laplacian-пирамида Lab-L; переключатели space/basis дают HSV-V и " +
+            "полноразмерные edge-aware residual bands. Мелкие полосы усиливаем ТОЛЬКО где t велико,\n" +
             "   гасим где t мало (плотная дымка = шум); крупные контуры усиливаем везде.\n" +
             "4. Баланс белого + мягкий тон/вибранс.\n\n" +
             "Параметры t_lo/t_hi — где переключается «деталь ↔ шум» по пропусканию; gFine/gMid/gCoarse —\n" +
@@ -64,6 +66,10 @@ namespace SimpleDeHaze.Methods
             new ParamDef("smooth",  "Шумоподавление",              0.0,  6.0,  0.4),
             new ParamDef("wiener",  "Gate: 0=smoothstep, 1=модель шума", 0, 1, 0, 1, isInt: true, tunable: false),
             new ParamDef("rough",   "Шероховатость: 0=2 масштаба, 1=МНК по 5", 0, 1, 0, 1, isInt: true, tunable: false),
+            new ParamDef("space",   "Полосы: 0=Lab-L, 1=HSV-V",    0, 1, 0, 1, isInt: true, tunable: false),
+            new ParamDef("basis",   "Базис: 0=Laplacian, 1=edge-aware residual", 0, 1, 0, 1, isInt: true, tunable: false),
+            new ParamDef("edgeS",   "Edge bands: базовый spatial scale", 4, 48, 12),
+            new ParamDef("edgeR",   "Edge bands: range scale",    0.03, 0.5, 0.18),
         };
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)
@@ -76,6 +82,8 @@ namespace SimpleDeHaze.Methods
 
             bool wiener = p.TryGetValue("wiener", out var wv) && wv >= 0.5;
             bool roughRobust = p.TryGetValue("rough", out var rv) && rv >= 0.5;
+            bool hsvValue = p.TryGetValue("space", out var sv) && sv >= 0.5;
+            bool edgeBands = p.TryGetValue("basis", out var bv) && bv >= 0.5;
 
             using var I = DehazeCore.Normalize(input);
             // structure-confidence: цвет и полосы гейтуем по ней. rough=1 - многомасштабная оценка с
@@ -138,9 +146,16 @@ namespace SimpleDeHaze.Methods
             // --- транс-масштабная Лапласиан-реконструкция (ядро метода) ---
             // wiener=1: коэффициент полосы выводится из модели шума S/(S+σ²/t²) - без ручных t_lo/t_hi.
             // Шум оценивается по ЯРКОСТИ ВХОДА, то есть до усиления делением на t.
-            using var enhanced = wiener
-                ? ContourOps.WienerScaleLaplacian(J01, tRef, levels, gFine, gMid, gCoarse, I, tmin)
-                : ContourOps.TransmissionScaleLaplacian(J01, tRef, levels, gFine, gMid, gCoarse, tLo, tHi, rich, 0.08);
+            using var enhanced = edgeBands
+                ? ContourOps.TransmissionEdgeAwareBands(J01, tRef, Math.Clamp(levels - 2, 2, 4),
+                    gFine, gMid, gCoarse, tLo, tHi, p["edgeS"], p["edgeR"], hsvValue, rich, 0.08)
+                : hsvValue
+                    ? ContourOps.TransmissionScaleHsvValue(J01, tRef, levels,
+                        gFine, gMid, gCoarse, tLo, tHi, rich, 0.08)
+                    : wiener
+                        ? ContourOps.WienerScaleLaplacian(J01, tRef, levels, gFine, gMid, gCoarse, I, tmin)
+                        : ContourOps.TransmissionScaleLaplacian(J01, tRef, levels,
+                            gFine, gMid, gCoarse, tLo, tHi, rich, 0.08);
 
             // --- финал: цвет уже сбалансирован локальным ББ выше; тон/вибранс/цвет ---
             using var boosted = DehazeCore.LabEnhance(enhanced, 0.0, 8, sat, 0.0);

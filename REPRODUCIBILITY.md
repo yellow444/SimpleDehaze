@@ -200,6 +200,35 @@ dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release --no-build -- `
 (`30.797 → 33.846`). Это подтверждает отсутствие залипания поиска, но не заменяет validation/test
 разделение выше.
 
+## Transmission-aware RGB/HSV и basis ablation
+
+Структурные переключатели `space` (`0=Lab-L`, `1=HSV-V`) и `basis` (`0=Laplacian`,
+`1=edge-aware residual`) намеренно исключены из AutoTuner. Полная 2×2 validation-матрица
+запускается четырьмя командами с одинаковым manifest/profile; пример HSV edge:
+
+```powershell
+dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release --no-build -- `
+  --benchmark --manifest=datasets/manifests/o-haze-in-repo.json --split=val `
+  --profile=full --maxdim=192 --evalfull --warmup=0 --repeat=1 --no-memory `
+  "--methods=^Transmission-aware Laplacian" --params="space=1,basis=1" `
+  --out=benchmark_results/trans-hsv-edge-val-192.csv
+```
+
+Замените `space,basis` на `0,0`, `1,0` и `0,1` для остальных ячеек. Зафиксированный после
+validation метод тестируется без изменения параметров:
+
+```powershell
+dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release --no-build -- `
+  --benchmark --manifest=datasets/manifests/o-haze-in-repo.json --split=test `
+  --profile=full --maxdim=192 --evalfull --warmup=0 --repeat=1 --no-memory `
+  "--methods=^Transmission-aware HSV Edge Bands" `
+  --out=benchmark_results/trans-hsv-edge-test-192.csv
+```
+
+Timing нельзя брать из однопроходного 192 px прогона. Контрольный режим: первые 8 validation
+изображений, `--maxdim=800 --warmup=1 --repeat=3`. Таблицы, точные результаты, граница новизны и
+scene-08 caveat: `SimpleDeHaze/docs/research/transmission-aware-study-2026-08.md`.
+
 ## Внешние baseline
 
 Предварительно рассчитанные результаты BCCR/PF-DCP/non-local/Tarel и других реализаций оцениваются

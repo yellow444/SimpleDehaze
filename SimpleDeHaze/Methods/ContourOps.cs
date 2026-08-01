@@ -5,6 +5,7 @@ using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
+using Emgu.CV.XImgproc;
 
 namespace SimpleDeHaze.Methods
 {
@@ -197,6 +198,223 @@ namespace SimpleDeHaze.Methods
             var res = new Mat();
             out8.ConvertTo(res, DepthType.Cv32F, 1.0 / 255.0);
             return res;
+        }
+
+        /// <summary>
+        /// HSV-V control variant of the transmission-aware pyramid. H and S are copied unchanged;
+        /// only V is decomposed. This deliberately avoids treating circular Hue as a scalar band.
+        /// </summary>
+        public static Mat TransmissionScaleHsvValue(Mat bgr01, Mat tMap, int levels,
+            double gFine, double gMid, double gCoarse, double tLo, double tHi,
+            Mat? richMap = null, double bandC = 0.0)
+        {
+            using var hsv = new Mat();
+            CvInvoke.CvtColor(bgr01, hsv, ColorConversion.Bgr2Hsv);
+            var channels = hsv.Split();
+            using var enhancedValue = TransmissionPyramidScalar(channels[2], tMap, levels,
+                gFine, gMid, gCoarse, tLo, tHi, richMap, bandC);
+            enhancedValue.CopyTo(channels[2]);
+
+            using (var vector = new VectorOfMat(channels)) CvInvoke.Merge(vector, hsv);
+            foreach (var channel in channels) channel.Dispose();
+            var result = new Mat();
+            CvInvoke.CvtColor(hsv, result, ColorConversion.Hsv2Bgr);
+            DehazeCore.Clamp01(result);
+            return result;
+        }
+
+        /// <summary>
+        /// Full-resolution edge-aware residual stack. Unlike a Gaussian/Laplacian pyramid it does
+        /// not downsample: each band is the difference between two Domain-Transform smoothings.
+        /// The same transmission/scale gate is applied to each band. This is an experimental basis,
+        /// not a claim that edge-aware or residual decompositions themselves are new.
+        /// </summary>
+        public static Mat TransmissionEdgeAwareBands(Mat bgr01, Mat tMap, int bands,
+            double gFine, double gMid, double gCoarse, double tLo, double tHi,
+            double spatialScale, double rangeScale, bool hsvValue,
+            Mat? richMap = null, double bandC = 0.0)
+        {
+            bands = Math.Clamp(bands, 2, 4);
+            spatialScale = Math.Clamp(spatialScale, 2, 96);
+            rangeScale = Math.Clamp(rangeScale, 0.01, 1.0);
+
+            if (hsvValue)
+            {
+                using var hsv = new Mat();
+                CvInvoke.CvtColor(bgr01, hsv, ColorConversion.Bgr2Hsv);
+                var channels = hsv.Split();
+                using var enhanced = TransmissionEdgeBandScalar(channels[2], bgr01, tMap, bands,
+                    gFine, gMid, gCoarse, tLo, tHi, spatialScale, rangeScale, richMap, bandC);
+                enhanced.CopyTo(channels[2]);
+                using (var vector = new VectorOfMat(channels)) CvInvoke.Merge(vector, hsv);
+                foreach (var channel in channels) channel.Dispose();
+                var result = new Mat();
+                CvInvoke.CvtColor(hsv, result, ColorConversion.Hsv2Bgr);
+                DehazeCore.Clamp01(result);
+                return result;
+            }
+
+            // RGB companion: build bands in linear luminance and add the luminance delta equally
+            // to linear RGB. This preserves opponent-channel differences better than three
+            // independent RGB pyramids and keeps the comparison to HSV-V one-dimensional.
+            using var linear = ColorSpace.ToLinear(bgr01);
+            using var luminance = ColorSpace.Luminance(linear);
+            using var enhancedLuminance = TransmissionEdgeBandScalar(luminance, bgr01, tMap, bands,
+                gFine, gMid, gCoarse, tLo, tHi, spatialScale, rangeScale, richMap, bandC);
+            using var delta = new Mat();
+            CvInvoke.Subtract(enhancedLuminance, luminance, delta);
+            var rgb = linear.Split();
+            foreach (var channel in rgb)
+            {
+                CvInvoke.Add(channel, delta, channel);
+                DehazeCore.Clamp01(channel);
+            }
+            using var adjustedLinear = new Mat();
+            using (var vector = new VectorOfMat(rgb)) CvInvoke.Merge(vector, adjustedLinear);
+            foreach (var channel in rgb) channel.Dispose();
+            var srgb = ColorSpace.ToSrgb(adjustedLinear);
+            DehazeCore.Clamp01(srgb);
+            return srgb;
+        }
+
+        internal static double TransmissionBandGate(double transmission, double tLo, double tHi,
+            double scaleFraction, double richness = 0.0)
+        {
+            double span = Math.Max(1e-12, tHi - tLo);
+            double s = Math.Clamp((transmission - tLo) / span, 0, 1);
+            double smooth = s * s * (3 - 2 * s);
+            double sf = Math.Clamp(scaleFraction, 0, 1);
+            double gate = smooth * (1 - sf) + sf;
+            return Math.Max(gate, Math.Clamp(richness, 0, 1) * 0.8 * sf);
+        }
+
+        private static Mat TransmissionPyramidScalar(Mat signal, Mat tMap, int levels,
+            double gFine, double gMid, double gCoarse, double tLo, double tHi,
+            Mat? richMap, double bandC)
+        {
+            levels = Math.Clamp(levels, 2, 7);
+            double span = Math.Max(1e-3, tHi - tLo);
+            const double coarseWeight = 0.8;
+            var gauss = new List<Mat> { signal.Clone() };
+            var tp = new List<Mat> { tMap.Clone() };
+            for (int i = 1; i < levels; i++)
+            {
+                var down = new Mat(); CvInvoke.PyrDown(gauss[i - 1], down); gauss.Add(down);
+                var transmission = new Mat(); CvInvoke.PyrDown(tp[i - 1], transmission); tp.Add(transmission);
+            }
+
+            var residuals = new List<Mat>();
+            for (int i = 0; i < levels - 1; i++)
+            {
+                using var up = Up(gauss[i + 1], gauss[i].Size);
+                var residual = new Mat(); CvInvoke.Subtract(gauss[i], up, residual); residuals.Add(residual);
+            }
+
+            double Gain(int i)
+            {
+                if (i == 0) return gFine;
+                double f = (double)(i - 1) / Math.Max(1, levels - 2);
+                return gMid + f * (gCoarse - gMid);
+            }
+
+            var current = gauss[levels - 1].Clone();
+            for (int i = levels - 2; i >= 0; i--)
+            {
+                using var up = Up(current, gauss[i].Size);
+                double sf = (double)i / Math.Max(1, levels - 2);
+                using var normalized = new Mat();
+                tp[i].ConvertTo(normalized, DepthType.Cv32F, 1.0 / span, -tLo / span);
+                DehazeCore.Clamp01(normalized);
+                using (var square = new Mat())
+                {
+                    CvInvoke.Multiply(normalized, normalized, square);
+                    using var cube = new Mat(); CvInvoke.Multiply(square, normalized, cube);
+                    CvInvoke.AddWeighted(square, 3.0, cube, -2.0, 0.0, normalized);
+                }
+                using var gate = new Mat();
+                normalized.ConvertTo(gate, DepthType.Cv32F, 1.0 - sf, sf);
+                if (richMap != null)
+                {
+                    using var richness = new Mat();
+                    if (richMap.Size != gate.Size) CvInvoke.Resize(richMap, richness, gate.Size); else richMap.CopyTo(richness);
+                    richness.ConvertTo(richness, DepthType.Cv32F, coarseWeight * sf);
+                    CvInvoke.Max(gate, richness, gate);
+                }
+                using var contribution = new Mat(); CvInvoke.Multiply(residuals[i], gate, contribution);
+                if (bandC > 1e-6) DehazeCore.Clamp(contribution, -bandC, bandC);
+                using var scaled = new Mat(); contribution.ConvertTo(scaled, DepthType.Cv32F, Gain(i));
+                var next = new Mat(); CvInvoke.Add(up, scaled, next);
+                current.Dispose(); current = next;
+            }
+
+            DehazeCore.Clamp01(current);
+            foreach (var item in gauss) item.Dispose();
+            foreach (var item in tp) item.Dispose();
+            foreach (var item in residuals) item.Dispose();
+            return current;
+        }
+
+        private static Mat TransmissionEdgeBandScalar(Mat signal, Mat guide, Mat tMap, int bands,
+            double gFine, double gMid, double gCoarse, double tLo, double tHi,
+            double spatialScale, double rangeScale, Mat? richMap, double bandC)
+        {
+            var smooth = new List<Mat>();
+            for (int i = 0; i < bands; i++)
+            {
+                var filtered = new Mat();
+                XImgprocInvoke.DtFilter(guide, signal, filtered,
+                    spatialScale * Math.Pow(2, i), rangeScale, DtFilterType.NC, 2);
+                smooth.Add(filtered);
+            }
+
+            var residuals = new List<Mat>();
+            Mat previous = signal;
+            foreach (var filtered in smooth)
+            {
+                var residual = new Mat(); CvInvoke.Subtract(previous, filtered, residual); residuals.Add(residual);
+                previous = filtered;
+            }
+
+            double Gain(int i)
+            {
+                if (i == 0) return gFine;
+                double f = (double)(i - 1) / Math.Max(1, bands - 2);
+                return gMid + f * (gCoarse - gMid);
+            }
+
+            var current = smooth[^1].Clone();
+            double span = Math.Max(1e-3, tHi - tLo);
+            for (int i = 0; i < bands; i++)
+            {
+                double sf = (double)i / Math.Max(1, bands - 1);
+                using var normalized = new Mat();
+                tMap.ConvertTo(normalized, DepthType.Cv32F, 1.0 / span, -tLo / span);
+                DehazeCore.Clamp01(normalized);
+                using (var square = new Mat())
+                {
+                    CvInvoke.Multiply(normalized, normalized, square);
+                    using var cube = new Mat(); CvInvoke.Multiply(square, normalized, cube);
+                    CvInvoke.AddWeighted(square, 3.0, cube, -2.0, 0.0, normalized);
+                }
+                using var gate = new Mat(); normalized.ConvertTo(gate, DepthType.Cv32F, 1.0 - sf, sf);
+                if (richMap != null)
+                {
+                    using var richness = new Mat();
+                    if (richMap.Size != gate.Size) CvInvoke.Resize(richMap, richness, gate.Size); else richMap.CopyTo(richness);
+                    richness.ConvertTo(richness, DepthType.Cv32F, 0.8 * sf);
+                    CvInvoke.Max(gate, richness, gate);
+                }
+                using var contribution = new Mat(); CvInvoke.Multiply(residuals[i], gate, contribution);
+                if (bandC > 1e-6) DehazeCore.Clamp(contribution, -bandC, bandC);
+                using var scaled = new Mat(); contribution.ConvertTo(scaled, DepthType.Cv32F, Gain(i));
+                var next = new Mat(); CvInvoke.Add(current, scaled, next);
+                current.Dispose(); current = next;
+            }
+
+            DehazeCore.Clamp01(current);
+            foreach (var item in smooth) item.Dispose();
+            foreach (var item in residuals) item.Dispose();
+            return current;
         }
 
         /// <summary>

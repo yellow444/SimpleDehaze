@@ -12,6 +12,11 @@ airlight-aligned оператор восстановления с двумя unc
 использует координаты `(V, SV cos H, SV sin H)`, три uncertainty-aware gain и выпуклый
 saturation/value-коридор. Проверка дала отрицательный результат: метод оставлен для абляций,
 удалён из curated-набора и не рассматривается как точная атмосферная модель в HSV.
+Для визуально сильной perceptual-ветви добавлено контролируемое сравнение
+[Transmission-aware Lab-L/HSV-V и Laplacian/edge bands](SimpleDeHaze/docs/methods/transmission-aware-multiscale.md).
+Зафиксированный HSV edge-вариант улучшил прежний baseline по SSIM на 21/22 O-HAZE test-кадрах,
+но оказался примерно на 13% медленнее и иногда усиливает мозаичную микротекстуру; это
+quality-кандидат, а не объявленный speed/SOTA результат.
 Данные, DIODE scene split, 22 500 controlled recipes, полный прогон 112 500 строк, настоящий LPIPS
 на 364 real-paired результатах и честные отрицательные выводы зафиксированы в
 [A²CR data protocol](SimpleDeHaze/docs/research/a2cr-data-protocol.md).
