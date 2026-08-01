@@ -9,6 +9,7 @@ internal static class Program
         var a2cr = new A2crTests();
         var c3r = new C3rTests();
         var transmission = new TransmissionAwareTests();
+        var hcv = new HcvA2crTests();
         var npy = new NpyReaderTests();
         var metrics = new BenchmarkMetricTests();
         var diode = new DiodeFormulaTests();
@@ -47,7 +48,16 @@ internal static class Program
             (nameof(transmission.EdgeAwareBands_UnitGainReconstructsHsvInput), transmission.EdgeAwareBands_UnitGainReconstructsHsvInput),
             (nameof(transmission.HsvAndEdgeVariants_ProduceFiniteFeasibleOutput), transmission.HsvAndEdgeVariants_ProduceFiniteFeasibleOutput),
             (nameof(transmission.RegisteredHsvEdgeVariant_FreezesModesAndUsesValidatedDefaults), transmission.RegisteredHsvEdgeVariant_FreezesModesAndUsesValidatedDefaults),
-            (nameof(transmission.Registry_ExposesBothTransmissionVariantsAndKeepsRejectedHsvRecoveriesOut), transmission.Registry_ExposesBothTransmissionVariantsAndKeepsRejectedHsvRecoveriesOut),
+            (nameof(transmission.RegisteredHsvUtawVariant_ExposesOnlyEffectiveSearchCoordinates), transmission.RegisteredHsvUtawVariant_ExposesOnlyEffectiveSearchCoordinates),
+            (nameof(transmission.AtrousUnitGain_ReconstructsHsvAndFloatLabInputs), transmission.AtrousUnitGain_ReconstructsHsvAndFloatLabInputs),
+            (nameof(transmission.AtrousCpuGpu_StayNumericallyEquivalentWhenCudaExists), transmission.AtrousCpuGpu_StayNumericallyEquivalentWhenCudaExists),
+            (nameof(transmission.Registry_RecommendsValidatedTransmissionVariantsAndKeepsAblationsOut), transmission.Registry_RecommendsValidatedTransmissionVariantsAndKeepsAblationsOut),
+            (nameof(hcv.ExactDualGainInverse_RecoversAtmosphericGroundTruth), hcv.ExactDualGainInverse_RecoversAtmosphericGroundTruth),
+            (nameof(hcv.FeasibleProjector_KeepsRandomHcvProposalsInsideRgbCube), hcv.FeasibleProjector_KeepsRandomHcvProposalsInsideRgbCube),
+            (nameof(hcv.AtrousZeroBoost_IsIdentityAndConstantSafe), hcv.AtrousZeroBoost_IsIdentityAndConstantSafe),
+            (nameof(hcv.FamilyBalancedFusion_PreventsCorrelatedDcpMajority), hcv.FamilyBalancedFusion_PreventsCorrelatedDcpMajority),
+            (nameof(hcv.RefinedTransmissionVariance_UsesTheRefinedMeanAndDepthSigma), hcv.RefinedTransmissionVariance_UsesTheRefinedMeanAndDepthSigma),
+            (nameof(hcv.RegisteredPipelines_ProduceFiniteFeasibleOutput), hcv.RegisteredPipelines_ProduceFiniteFeasibleOutput),
             (nameof(npy.ReadsLittleEndianFloat32Matrix), npy.ReadsLittleEndianFloat32Matrix),
             (nameof(npy.ReadsBooleanMaskAsZeroOne), npy.ReadsBooleanMaskAsZeroOne),
             (nameof(metrics.HueError_IgnoresAchromaticPixelsAndIsZeroForIdentity), metrics.HueError_IgnoresAchromaticPixelsAndIsZeroForIdentity),

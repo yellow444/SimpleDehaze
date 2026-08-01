@@ -56,7 +56,12 @@ public sealed class TransmissionAwareTests
         parameters["patch"] = 3; parameters["aRadius"] = 20;
         parameters["rguide"] = 5; parameters["levels"] = 4; parameters["smooth"] = 0;
 
-        foreach (var variant in new[] { (Space: 1.0, Basis: 0.0), (Space: 0.0, Basis: 1.0), (Space: 1.0, Basis: 1.0) })
+        foreach (var variant in new[]
+                 {
+                     (Space: 1.0, Basis: 0.0), (Space: 0.0, Basis: 1.0),
+                     (Space: 1.0, Basis: 1.0), (Space: 0.0, Basis: 2.0),
+                     (Space: 1.0, Basis: 2.0),
+                 })
         {
             parameters["space"] = variant.Space;
             parameters["basis"] = variant.Basis;
@@ -74,6 +79,8 @@ public sealed class TransmissionAwareTests
         using var input = RandomImage(36, 28, 703);
         var method = new TransmissionAwareHsvEdgeMethod();
         TestAssert.False(method.Parameters.Any(parameter => parameter.Key is "space" or "basis"));
+        TestAssert.False(method.Parameters.Any(parameter => parameter.Key is
+            "wiener" or "uNoise" or "uUnc" or "uRadius" or "uLimit"));
         var parameters = method.Parameters.ToDictionary(x => x.Key, x => x.Default);
         TestAssert.InRange(Math.Abs(parameters["gFine"] - 0.5), 0, 1e-12);
         TestAssert.InRange(Math.Abs(parameters["gMid"] - 1.6), 0, 1e-12);
@@ -88,14 +95,80 @@ public sealed class TransmissionAwareTests
         TestAssert.InRange(values.Max(), 0, 1);
     }
 
-    public void Registry_ExposesBothTransmissionVariantsAndKeepsRejectedHsvRecoveriesOut()
+    public void RegisteredHsvUtawVariant_ExposesOnlyEffectiveSearchCoordinates()
+    {
+        var method = new TransmissionAwareHsvUtawMethod();
+        TestAssert.False(method.Parameters.Any(parameter => parameter.Key is
+            "space" or "basis" or "wiener" or "edgeS" or "edgeR"));
+        foreach (string key in new[] { "uNoise", "uUnc", "uLimit" })
+            TestAssert.True(method.Parameters.Single(parameter => parameter.Key == key).Search,
+                $"{key} must participate in quick AutoTuner search");
+        TestAssert.False(method.Parameters.Single(parameter => parameter.Key == "uRadius").Search);
+        TestAssert.True(method.Parameters.Single(parameter => parameter.Key == "uRadius").Tunable);
+    }
+
+    public void AtrousUnitGain_ReconstructsHsvAndFloatLabInputs()
+    {
+        using var input = RandomImage(31, 25, 704);
+        using var inputFloat = DehazeCore.Normalize(input);
+        using var transmission = new Mat(input.Height, input.Width, DepthType.Cv32F, 1);
+        using var sigma = new Mat(input.Height, input.Width, DepthType.Cv32F, 1);
+        transmission.SetTo(new MCvScalar(1)); sigma.SetTo(new MCvScalar(0));
+        foreach (bool hsv in new[] { false, true })
+        {
+            using var output = ContourOps.TransmissionAtrousBands(inputFloat, transmission, sigma,
+                4, 1, 1, 1, 0.12, 0.45, hsv, 0, 1, 3, 0.04);
+            using var difference = new Mat(); CvInvoke.AbsDiff(inputFloat, output, difference);
+            double maximum = 0;
+            foreach (var channel in difference.Split())
+            {
+                double minimum = 0, channelMaximum = 0;
+                var minPoint = new System.Drawing.Point(); var maxPoint = new System.Drawing.Point();
+                CvInvoke.MinMaxLoc(channel, ref minimum, ref channelMaximum, ref minPoint, ref maxPoint);
+                maximum = Math.Max(maximum, channelMaximum); channel.Dispose();
+            }
+            // OpenCV's float Lab round-trip is approximate near the sRGB gamut boundary.
+            TestAssert.InRange(maximum, 0, hsv ? 2e-4 : 5e-3);
+        }
+    }
+
+    public void AtrousCpuGpu_StayNumericallyEquivalentWhenCudaExists()
+    {
+        if (!GpuStationaryAtrous.IsAvailable) return;
+        using var input = RandomImage(64, 48, 705);
+        using var inputFloat = DehazeCore.Normalize(input);
+        using var transmission = new Mat(input.Height, input.Width, DepthType.Cv32F, 1);
+        using var sigma = new Mat(input.Height, input.Width, DepthType.Cv32F, 1);
+        transmission.SetTo(new MCvScalar(0.63)); sigma.SetTo(new MCvScalar(0.11));
+        using var cpu = ContourOps.TransmissionAtrousBands(inputFloat, transmission, sigma,
+            4, 0.5, 1.6, 1.2, 0.12, 0.45, true, 0.004, 1, 3, 0.04);
+        using var gpu = GpuStationaryAtrous.TransmissionAtrousHsv(inputFloat, transmission, sigma,
+            4, 0.5, 1.6, 1.2, 0.12, 0.45, 0.004, 1, 3, 0.04);
+        using var difference = new Mat(); CvInvoke.AbsDiff(cpu, gpu, difference);
+        double maximum = 0;
+        foreach (var channel in difference.Split())
+        {
+            double minimum = 0, channelMaximum = 0;
+            var minPoint = new System.Drawing.Point(); var maxPoint = new System.Drawing.Point();
+            CvInvoke.MinMaxLoc(channel, ref minimum, ref channelMaximum, ref minPoint, ref maxPoint);
+            maximum = Math.Max(maximum, channelMaximum); channel.Dispose();
+        }
+        TestAssert.InRange(maximum, 0, 7e-4);
+    }
+
+    public void Registry_RecommendsValidatedTransmissionVariantsAndKeepsAblationsOut()
     {
         TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware Laplacian (эксперимент)"));
-        TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware HSV Edge Bands (эксперимент)"));
+        TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware HSV UTAW (эксперимент)"));
+        TestAssert.False(MethodRegistry.Recommended.Contains("Transmission-aware HSV Edge Bands (эксперимент)"));
+        TestAssert.False(MethodRegistry.Recommended.Contains("Transmission-aware HSV UTAW (GPU CUDA, эксперимент)"));
         string c3rName = MethodRegistry.All.Single(method => method is HsvC3rMethod).Name;
         TestAssert.False(MethodRegistry.Recommended.Contains(c3rName));
         string hsvA2crName = MethodRegistry.All.Single(method => method is HsvA2crMethod).Name;
         TestAssert.False(MethodRegistry.Recommended.Contains(hsvA2crName));
+        TestAssert.False(MethodRegistry.Recommended.Contains(MethodRegistry.All.Single(method => method is HcvA2crMethod).Name));
+        TestAssert.False(MethodRegistry.Recommended.Contains(MethodRegistry.All.Single(method => method is HcvRgbA2crFusionMethod).Name));
+        TestAssert.False(MethodRegistry.Recommended.Contains(MethodRegistry.All.Single(method => method is HcvA2crUtawMethod).Name));
     }
 
     private static Image<Bgr, byte> RandomImage(int width, int height, int seed)

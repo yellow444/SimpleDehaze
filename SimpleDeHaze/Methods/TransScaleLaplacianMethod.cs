@@ -67,9 +67,13 @@ namespace SimpleDeHaze.Methods
             new ParamDef("wiener",  "Gate: 0=smoothstep, 1=модель шума", 0, 1, 0, 1, isInt: true, tunable: false),
             new ParamDef("rough",   "Шероховатость: 0=2 масштаба, 1=МНК по 5", 0, 1, 0, 1, isInt: true, tunable: false),
             new ParamDef("space",   "Полосы: 0=Lab-L, 1=HSV-V",    0, 1, 0, 1, isInt: true, tunable: false),
-            new ParamDef("basis",   "Базис: 0=Laplacian, 1=edge-aware residual", 0, 1, 0, 1, isInt: true, tunable: false),
+            new ParamDef("basis",   "Базис: 0=Laplacian, 1=edge, 2=UTAW CPU, 3=UTAW GPU", 0, 3, 0, 1, isInt: true, tunable: false),
             new ParamDef("edgeS",   "Edge bands: базовый spatial scale", 4, 48, 12),
             new ParamDef("edgeR",   "Edge bands: range scale",    0.03, 0.5, 0.18),
+            new ParamDef("uNoise",  "UTAW: σ шума",                 0, 0.05, 0.004),
+            new ParamDef("uUnc",    "UTAW: штраф CAP↔DCP",          0, 10, 1.0),
+            new ParamDef("uRadius", "UTAW: радиус энергии",         0, 12, 3, 1, isInt: true),
+            new ParamDef("uLimit",  "UTAW: предел delta полосы", 0.005, 0.15, 0.04),
         };
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)
@@ -83,7 +87,7 @@ namespace SimpleDeHaze.Methods
             bool wiener = p.TryGetValue("wiener", out var wv) && wv >= 0.5;
             bool roughRobust = p.TryGetValue("rough", out var rv) && rv >= 0.5;
             bool hsvValue = p.TryGetValue("space", out var sv) && sv >= 0.5;
-            bool edgeBands = p.TryGetValue("basis", out var bv) && bv >= 0.5;
+            int basisMode = p.TryGetValue("basis", out var bv) ? Math.Clamp((int)Math.Round(bv), 0, 3) : 0;
 
             using var I = DehazeCore.Normalize(input);
             // structure-confidence: цвет и полосы гейтуем по ней. rough=1 - многомасштабная оценка с
@@ -146,19 +150,36 @@ namespace SimpleDeHaze.Methods
             // --- транс-масштабная Лапласиан-реконструкция (ядро метода) ---
             // wiener=1: коэффициент полосы выводится из модели шума S/(S+σ²/t²) - без ручных t_lo/t_hi.
             // Шум оценивается по ЯРКОСТИ ВХОДА, то есть до усиления делением на t.
-            using var enhanced = edgeBands
-                ? ContourOps.TransmissionEdgeAwareBands(J01, tRef, Math.Clamp(levels - 2, 2, 4),
-                    gFine, gMid, gCoarse, tLo, tHi, p["edgeS"], p["edgeR"], hsvValue, rich, 0.08)
-                : hsvValue
-                    ? ContourOps.TransmissionScaleHsvValue(J01, tRef, levels,
-                        gFine, gMid, gCoarse, tLo, tHi, rich, 0.08)
-                    : wiener
-                        ? ContourOps.WienerScaleLaplacian(J01, tRef, levels, gFine, gMid, gCoarse, I, tmin)
-                        : ContourOps.TransmissionScaleLaplacian(J01, tRef, levels,
-                            gFine, gMid, gCoarse, tLo, tHi, rich, 0.08);
+            Mat enhanced;
+            if (basisMode is 2 or 3)
+            {
+                using var capSafe = tCap.Clone(); using var dcpSafe = tDcp.Clone();
+                DehazeCore.Clamp(capSafe, tmin, 1); DehazeCore.Clamp(dcpSafe, tmin, 1);
+                CvInvoke.Log(capSafe, capSafe); CvInvoke.Log(dcpSafe, dcpSafe);
+                using var sigmaDepth = new Mat(); CvInvoke.AbsDiff(capSafe, dcpSafe, sigmaDepth);
+                if (basisMode == 3 && hsvValue && GpuStationaryAtrous.IsAvailable)
+                    enhanced = GpuStationaryAtrous.TransmissionAtrousHsv(J01, tRef, sigmaDepth,
+                        Math.Clamp(levels - 1, 2, 5), gFine, gMid, gCoarse, tLo, tHi,
+                        p["uNoise"], p["uUnc"], (int)p["uRadius"], p["uLimit"]);
+                else
+                    enhanced = ContourOps.TransmissionAtrousBands(J01, tRef, sigmaDepth, Math.Clamp(levels - 1, 2, 5),
+                        gFine, gMid, gCoarse, tLo, tHi, hsvValue, p["uNoise"], p["uUnc"],
+                        (int)p["uRadius"], p["uLimit"]);
+            }
+            else if (basisMode == 1)
+                enhanced = ContourOps.TransmissionEdgeAwareBands(J01, tRef, Math.Clamp(levels - 2, 2, 4),
+                    gFine, gMid, gCoarse, tLo, tHi, p["edgeS"], p["edgeR"], hsvValue, rich, 0.08);
+            else if (hsvValue)
+                enhanced = ContourOps.TransmissionScaleHsvValue(J01, tRef, levels,
+                    gFine, gMid, gCoarse, tLo, tHi, rich, 0.08);
+            else if (wiener)
+                enhanced = ContourOps.WienerScaleLaplacian(J01, tRef, levels, gFine, gMid, gCoarse, I, tmin);
+            else enhanced = ContourOps.TransmissionScaleLaplacian(J01, tRef, levels,
+                    gFine, gMid, gCoarse, tLo, tHi, rich, 0.08);
+            using var enhancedOwned = enhanced;
 
             // --- финал: цвет уже сбалансирован локальным ББ выше; тон/вибранс/цвет ---
-            using var boosted = DehazeCore.LabEnhance(enhanced, 0.0, 8, sat, 0.0);
+            using var boosted = DehazeCore.LabEnhance(enhancedOwned, 0.0, 8, sat, 0.0);
             using var toned = DehazeCore.RestoreTone(boosted, tone, 0.01);
             using var hmAll = LocalHazeCore.HazeDensity(tRef);   // потолок цветности ослабляем по плотности дымки
             using var limited = DehazeCore.LimitColorfulness(toned, input.Mat, color, CvInvoke.Mean(hmAll).V0);

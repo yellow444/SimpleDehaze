@@ -277,6 +277,114 @@ namespace SimpleDeHaze.Methods
             return srgb;
         }
 
+        /// <summary>
+        /// Full-resolution stationary B3-spline bands with a reliability budget derived from local
+        /// band power, transmission-amplified noise and CAP/DCP optical-depth disagreement.
+        /// Unlike the legacy Lab path this uses float Lab throughout; HSV mode changes only V.
+        /// </summary>
+        public static Mat TransmissionAtrousBands(Mat bgr01, Mat tMap, Mat sigmaDepth, int levels,
+            double gFine, double gMid, double gCoarse, double tLo, double tHi,
+            bool hsvValue, double noiseSigma, double uncertaintyWeight,
+            int energyRadius, double deltaLimit)
+        {
+            levels = Math.Clamp(levels, 2, 5);
+            energyRadius = Math.Clamp(energyRadius, 0, 20);
+            double span = Math.Max(1e-3, tHi - tLo);
+            using var color = new Mat();
+            CvInvoke.CvtColor(bgr01, color, hsvValue ? ColorConversion.Bgr2Hsv : ColorConversion.Bgr2Lab);
+            var channels = color.Split();
+            using var scalar = new Mat();
+            channels[0].CopyTo(scalar);
+            int scalarChannel = hsvValue ? 2 : 0;
+            if (scalarChannel != 0) channels[scalarChannel].CopyTo(scalar);
+            if (!hsvValue) scalar.ConvertTo(scalar, DepthType.Cv32F, 1.0 / 100.0);
+
+            var bands = new List<Mat>(levels);
+            var current = scalar.Clone();
+            try
+            {
+                for (int level = 0; level < levels; level++)
+                {
+                    var smooth = StationaryAtrous.Smooth(current, 1 << level);
+                    var band = new Mat(); CvInvoke.Subtract(current, smooth, band); bands.Add(band);
+                    current.Dispose(); current = smooth;
+                }
+
+                using var tSquared = new Mat(); CvInvoke.Multiply(tMap, tMap, tSquared);
+                tSquared.ConvertTo(tSquared, DepthType.Cv32F, 1, 1e-6);
+                using var sigmaSquared = new Mat(); CvInvoke.Multiply(sigmaDepth, sigmaDepth, sigmaSquared);
+                using var reconstructed = current.Clone();
+                for (int level = 0; level < levels; level++)
+                {
+                    double sf = (double)level / Math.Max(1, levels - 1);
+                    double baseGain = level == 0 ? gFine :
+                        gMid + (double)(level - 1) / Math.Max(1, levels - 2) * (gCoarse - gMid);
+
+                    using var normalizedT = new Mat();
+                    tMap.ConvertTo(normalizedT, DepthType.Cv32F, 1.0 / span, -tLo / span);
+                    DehazeCore.Clamp01(normalizedT);
+                    using (var square = new Mat())
+                    {
+                        CvInvoke.Multiply(normalizedT, normalizedT, square);
+                        using var cube = new Mat(); CvInvoke.Multiply(square, normalizedT, cube);
+                        CvInvoke.AddWeighted(square, 3, cube, -2, 0, normalizedT);
+                    }
+                    using var transmissionGate = new Mat();
+                    normalizedT.ConvertTo(transmissionGate, DepthType.Cv32F, 1 - sf, sf);
+
+                    using var bandSquared = new Mat(); CvInvoke.Multiply(bands[level], bands[level], bandSquared);
+                    using var power = new Mat();
+                    if (energyRadius > 0)
+                    {
+                        int size = 2 * energyRadius + 1;
+                        CvInvoke.Blur(bandSquared, power, new System.Drawing.Size(size, size),
+                            new System.Drawing.Point(-1, -1));
+                    }
+                    else bandSquared.CopyTo(power);
+
+                    using var noiseBudget = new Mat();
+                    using (var numerator = new Mat(tMap.Size, DepthType.Cv32F, 1))
+                    {
+                        numerator.SetTo(new MCvScalar(Math.Max(0, noiseSigma * noiseSigma)));
+                        CvInvoke.Divide(numerator, tSquared, noiseBudget);
+                    }
+                    using var disagreement = new Mat();
+                    sigmaSquared.ConvertTo(disagreement, DepthType.Cv32F,
+                        Math.Max(0, uncertaintyWeight) * (1 + 0.35 * level));
+                    CvInvoke.Add(noiseBudget, disagreement, noiseBudget);
+                    using var signalPower = new Mat(); CvInvoke.Subtract(power, noiseBudget, signalPower);
+                    using (var zero = new Mat(signalPower.Size, DepthType.Cv32F, 1))
+                    {
+                        zero.SetTo(new MCvScalar(0)); CvInvoke.Max(signalPower, zero, signalPower);
+                    }
+                    using var denominator = new Mat(); CvInvoke.Add(signalPower, noiseBudget, denominator);
+                    denominator.ConvertTo(denominator, DepthType.Cv32F, 1, 1e-8);
+                    using var reliability = new Mat(); CvInvoke.Divide(signalPower, denominator, reliability);
+                    CvInvoke.Multiply(reliability, transmissionGate, reliability);
+
+                    using var delta = new Mat();
+                    CvInvoke.Multiply(bands[level], reliability, delta, baseGain - 1.0);
+                    if (deltaLimit > 0) DehazeCore.Clamp(delta, -deltaLimit, deltaLimit);
+                    using var contribution = new Mat(); CvInvoke.Add(bands[level], delta, contribution);
+                    CvInvoke.Add(reconstructed, contribution, reconstructed);
+                }
+                DehazeCore.Clamp01(reconstructed);
+                if (hsvValue) reconstructed.CopyTo(channels[2]);
+                else reconstructed.ConvertTo(channels[0], DepthType.Cv32F, 100.0);
+                using (var vector = new VectorOfMat(channels)) CvInvoke.Merge(vector, color);
+                var output = new Mat();
+                CvInvoke.CvtColor(color, output, hsvValue ? ColorConversion.Hsv2Bgr : ColorConversion.Lab2Bgr);
+                DehazeCore.Clamp01(output);
+                return output;
+            }
+            finally
+            {
+                current.Dispose();
+                foreach (var band in bands) band.Dispose();
+                foreach (var channel in channels) channel.Dispose();
+            }
+        }
+
         internal static double TransmissionBandGate(double transmission, double tLo, double tHi,
             double scaleFraction, double richness = 0.0)
         {

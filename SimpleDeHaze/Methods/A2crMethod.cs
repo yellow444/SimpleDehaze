@@ -60,29 +60,61 @@ namespace SimpleDeHaze.Methods
 
         internal static A2crExecution Execute(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)
         {
+            using var scene = EstimateScene(input, p);
+            double tMin = p["min"];
+            var options = new A2crRecoveryOptions(tMin, p["noise"] * p["noise"], p["airunc"],
+                p["noiseon"] >= 0.5, p["tuncon"] >= 0.5, p["auncon"] >= 0.5,
+                p["feasible"] >= 0.5, (int)p["radius"], p["couple"], p["tv"],
+                (int)p["tviter"], p["tvedge"]);
+            var recovery = A2crRecovery.Recover(scene.LinearInput, scene.Transmission,
+                scene.TransmissionVariance, scene.Airlight, options);
+            var srgb = ColorSpace.ToSrgb(recovery.LinearResult);
+            return new A2crExecution(srgb, recovery, scene.Transmission.Clone(),
+                scene.TransmissionVariance.Clone(), scene.SigmaDepth.Clone(), scene.Airlight);
+        }
+
+        /// <summary>
+        /// Shared physical front-end for RGB A²CR and color-coordinate ablations. Keeping it in one
+        /// place guarantees that recovery comparisons use exactly the same linear input, airlight,
+        /// transmission ensemble, refinement and uncertainty maps.
+        /// </summary>
+        internal static A2crSceneEstimate EstimateScene(Image<Bgr, byte> input,
+            IReadOnlyDictionary<string, double> p)
+        {
             int patch = Math.Max(1, (int)p["patch"]), bootCount = NormalizeBootstrapCount((int)p["boots"]);
             double omega = p["omega"], tMin = p["min"], top = p["top"] / 100.0;
-            using var linear = ColorSpace.NormalizeLinear(input);
-            var airlight = AirlightBootstrap.Estimate(linear, patch, top, bootCount);
-
+            var linear = ColorSpace.NormalizeLinear(input);
+            Mat? tRefined = null;
             var maps = new List<(Mat Transmission, double Weight)>();
+            var families = new List<IReadOnlyList<(Mat Transmission, double Weight)>>();
             try
             {
+                var airlight = AirlightBootstrap.Estimate(linear, patch, top, bootCount);
                 int[] offsets = bootCount == 1 ? new[] { 0 } : bootCount == 3 ? new[] { -1, 0, 1 } : new[] { -2, -1, 0, 1, 2 };
+                var dcpFamily = new List<(Mat Transmission, double Weight)>();
                 foreach (int offset in offsets)
                 {
                     int radius = Math.Max(1, patch + offset * Math.Max(1, patch / 3));
                     double localOmega = Math.Clamp(omega + 0.015 * offset, 0.1, 0.999);
-                    maps.Add((DehazeCore.RawTransmission(linear, airlight.Value, localOmega, radius), offset == 0 ? 1.0 : 0.75));
+                    var member = (DehazeCore.RawTransmission(linear, airlight.Value, localOmega, radius),
+                        offset == 0 ? 1.0 : 0.75);
+                    maps.Add(member); dcpFamily.Add(member);
                 }
+                families.Add(dcpFamily);
                 if (p["diverse"] >= 0.5)
                 {
-                    maps.Add((CapTransmission(linear, tMin, patch), 1.0));
-                    maps.Add((HazeLineTransmission(linear, airlight.Value, omega: 0.65, binsPerAxis: 18, tMin), 1.0));
+                    var cap = (CapTransmission(linear, tMin, patch), 1.0);
+                    var hazeLine = (HazeLineTransmission(linear, airlight.Value, omega: 0.65, binsPerAxis: 18, tMin), 1.0);
+                    maps.Add(cap); maps.Add(hazeLine);
+                    families.Add(new[] { cap }); families.Add(new[] { hazeLine });
                 }
 
-                using var fused = OpticalDepthFusion.Fuse(maps, tMin, p["tunc"], p["tufloor"]);
-                using var tRefined = Refiners.FastGuided(linear, fused.Transmission, (int)p["refine"], p["eps"], (int)p["fast"]);
+                bool familyBalanced = p.TryGetValue("family", out double familyMode) && familyMode >= 0.5;
+                using var fused = familyBalanced
+                    ? OpticalDepthFusion.FuseFamilies(families, tMin, p["tunc"], p["tufloor"])
+                    : OpticalDepthFusion.Fuse(maps, tMin, p["tunc"], p["tufloor"]);
+                tRefined = Refiners.FastGuided(linear, fused.Transmission,
+                    (int)p["refine"], p["eps"], (int)p["fast"]);
                 DehazeCore.Clamp01(tRefined);
                 using (var floor = new Mat(tRefined.Size, DepthType.Cv32F, 1))
                 {
@@ -90,14 +122,20 @@ namespace SimpleDeHaze.Methods
                     CvInvoke.Max(tRefined, floor, tRefined);
                 }
 
-                var options = new A2crRecoveryOptions(tMin, p["noise"] * p["noise"], p["airunc"],
-                    p["noiseon"] >= 0.5, p["tuncon"] >= 0.5, p["auncon"] >= 0.5,
-                    p["feasible"] >= 0.5, (int)p["radius"], p["couple"], p["tv"],
-                    (int)p["tviter"], p["tvedge"]);
-                var recovery = A2crRecovery.Recover(linear, tRefined, fused.TransmissionVariance, airlight, options);
-                var srgb = ColorSpace.ToSrgb(recovery.LinearResult);
-                return new A2crExecution(srgb, recovery, tRefined.Clone(), fused.TransmissionVariance.Clone(),
-                    fused.SigmaDepth.Clone(), airlight);
+                bool propagateRefinedVariance = p.TryGetValue("refvar", out double refvar) && refvar >= 0.5;
+                var variance = propagateRefinedVariance
+                    ? OpticalDepthFusion.PropagateVariance(tRefined, fused.SigmaDepth, p["tufloor"])
+                    : fused.TransmissionVariance.Clone();
+                var result = new A2crSceneEstimate(linear, tRefined,
+                    variance, fused.SigmaDepth.Clone(), airlight);
+                tRefined = null;
+                return result;
+            }
+            catch
+            {
+                tRefined?.Dispose();
+                linear.Dispose();
+                throw;
             }
             finally
             {
@@ -175,6 +213,33 @@ namespace SimpleDeHaze.Methods
         public void Dispose()
         {
             SrgbResult.Dispose(); Recovery.Dispose(); Transmission.Dispose(); TransmissionVariance.Dispose(); SigmaDepth.Dispose();
+        }
+    }
+
+    internal sealed class A2crSceneEstimate : IDisposable
+    {
+        public Mat LinearInput { get; }
+        public Mat Transmission { get; }
+        public Mat TransmissionVariance { get; }
+        public Mat SigmaDepth { get; }
+        public AirlightEstimate Airlight { get; }
+
+        public A2crSceneEstimate(Mat linearInput, Mat transmission, Mat transmissionVariance,
+            Mat sigmaDepth, AirlightEstimate airlight)
+        {
+            LinearInput = linearInput;
+            Transmission = transmission;
+            TransmissionVariance = transmissionVariance;
+            SigmaDepth = sigmaDepth;
+            Airlight = airlight;
+        }
+
+        public void Dispose()
+        {
+            LinearInput.Dispose();
+            Transmission.Dispose();
+            TransmissionVariance.Dispose();
+            SigmaDepth.Dispose();
         }
     }
 }

@@ -28,7 +28,8 @@ namespace SimpleDeHaze.Methods
             "улучшил baseline, но ещё не является независимым SOTA-результатом.";
 
         public IReadOnlyList<ParamDef> Parameters { get; } = BaseMethod.Parameters
-            .Where(definition => definition.Key is not "space" and not "basis")
+            .Where(definition => definition.Key is not "space" and not "basis" and not "wiener" and
+                not "uNoise" and not "uUnc" and not "uRadius" and not "uLimit")
             .Select(definition => new ParamDef(
                 definition.Key,
                 definition.Label,

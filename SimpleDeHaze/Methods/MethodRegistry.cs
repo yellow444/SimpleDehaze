@@ -11,6 +11,9 @@ namespace SimpleDeHaze.Methods
             // базовые приоры (первым - эталонный baseline без косметики)
             new CanonicalDcpMethod(),
             new A2crMethod(),
+            new HcvA2crMethod(),
+            new HcvRgbA2crFusionMethod(),
+            new HcvA2crUtawMethod(),
             new HsvA2crMethod(),
             new HsvC3rMethod(),
             new DcpCpuMethod(),
@@ -64,6 +67,8 @@ namespace SimpleDeHaze.Methods
             new LaplacianContourMethod(),
             new TransScaleLaplacianMethod(),
             new TransmissionAwareHsvEdgeMethod(),
+            new TransmissionAwareHsvUtawMethod(),
+            new TransmissionAwareHsvUtawGpuMethod(),
             new FractalHsvMethod(),
             new ChainMethod(),
             // enhancement-методы (не физическая модель дымки)
@@ -81,7 +86,7 @@ namespace SimpleDeHaze.Methods
             "A²CR-Dehaze (dual-gain recovery, эксперимент)",
             "HSV + многомасштабная шероховатость (эксперимент)",
             "Transmission-aware Laplacian (эксперимент)",
-            "Transmission-aware HSV Edge Bands (эксперимент)",
+            "Transmission-aware HSV UTAW (эксперимент)",
             "Color Attenuation+ (адаптивная глубина, баланс белого)",
             "Color Attenuation Prior (HSV)",                        // лёгкий, хорошо держит контуры
             "Локальная дымка - баланс (цвет + объекты)",            // характер по умолчанию: цвет за дымкой + читаемость

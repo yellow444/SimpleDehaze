@@ -68,6 +68,74 @@ namespace SimpleDeHaze.Methods
             return new OpticalDepthEstimate(ToMat(tOut, rows, cols), ToMat(varOut, rows, cols), ToMat(sigmaOut, rows, cols));
         }
 
+        /// <summary>
+        /// Two-stage fusion that gives each prior family one vote regardless of the number of
+        /// correlated perturbations inside it. Total uncertainty combines between-family MAD and
+        /// mean within-family robust variance in optical-depth space.
+        /// </summary>
+        public static OpticalDepthEstimate FuseFamilies(
+            IReadOnlyList<IReadOnlyList<(Mat Transmission, double Weight)>> families,
+            double minimumTransmission, double uncertaintyScale, double uncertaintyFloor)
+        {
+            if (families.Count == 0 || families.Any(family => family.Count == 0))
+                throw new ArgumentException("Transmission families must be non-empty", nameof(families));
+            var familyEstimates = new List<OpticalDepthEstimate>(families.Count);
+            try
+            {
+                foreach (var family in families)
+                    familyEstimates.Add(Fuse(family, minimumTransmission, 1.0, 0.0));
+                using var between = Fuse(familyEstimates
+                    .Select(estimate => (estimate.Transmission, 1.0)).ToArray(),
+                    minimumTransmission, 1.0, 0.0);
+
+                int rows = between.Transmission.Rows, cols = between.Transmission.Cols, pixels = rows * cols;
+                var transmission = new float[pixels]; var betweenSigma = new float[pixels];
+                between.Transmission.CopyTo(transmission); between.SigmaDepth.CopyTo(betweenSigma);
+                var within = familyEstimates.Select(estimate =>
+                {
+                    var data = new float[pixels]; estimate.SigmaDepth.CopyTo(data); return data;
+                }).ToArray();
+                var sigma = new float[pixels]; var variance = new float[pixels];
+                double scale = Math.Max(0, uncertaintyScale);
+                double floor2 = Math.Max(0, uncertaintyFloor) * Math.Max(0, uncertaintyFloor);
+                for (int i = 0; i < pixels; i++)
+                {
+                    double withinVariance = within.Average(map => map[i] * map[i]);
+                    double sigmaDepth = scale * Math.Sqrt(betweenSigma[i] * betweenSigma[i] + withinVariance);
+                    sigma[i] = (float)sigmaDepth;
+                    variance[i] = (float)(transmission[i] * transmission[i] * sigmaDepth * sigmaDepth + floor2);
+                }
+                return new OpticalDepthEstimate(between.Transmission.Clone(),
+                    ToMat(variance, rows, cols), ToMat(sigma, rows, cols));
+            }
+            finally
+            {
+                foreach (var estimate in familyEstimates) estimate.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Re-expresses optical-depth uncertainty around a refined transmission mean:
+        /// Var(t) ~= t_refined^2 Var(D) + sigma_floor^2. The refinement itself is deterministic;
+        /// this first-order propagation only fixes the otherwise inconsistent mean/variance pair.
+        /// </summary>
+        public static Mat PropagateVariance(Mat refinedTransmission, Mat sigmaDepth,
+            double transmissionSigmaFloor)
+        {
+            if (refinedTransmission.NumberOfChannels != 1 || sigmaDepth.NumberOfChannels != 1 ||
+                refinedTransmission.Rows != sigmaDepth.Rows || refinedTransmission.Cols != sigmaDepth.Cols)
+                throw new ArgumentException("Transmission and optical-depth sigma must be matching scalar maps");
+            using var tSquared = new Mat();
+            using var sigmaSquared = new Mat();
+            CvInvoke.Multiply(refinedTransmission, refinedTransmission, tSquared);
+            CvInvoke.Multiply(sigmaDepth, sigmaDepth, sigmaSquared);
+            var variance = new Mat();
+            CvInvoke.Multiply(tSquared, sigmaSquared, variance);
+            double floor = Math.Max(0, transmissionSigmaFloor);
+            if (floor > 0) CvInvoke.Add(variance, new ScalarArray(floor * floor), variance);
+            return variance;
+        }
+
         internal static double WeightedMedian(ReadOnlySpan<double> values, ReadOnlySpan<double> weights)
         {
             if (values.Length != weights.Length || values.Length == 0) throw new ArgumentException("Invalid weighted sample");
