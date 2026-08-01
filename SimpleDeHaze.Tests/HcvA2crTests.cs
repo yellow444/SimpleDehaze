@@ -79,14 +79,14 @@ public sealed class HcvA2crTests
         using var sigma = new Mat(rows, cols, DepthType.Cv32F, 1); sigma.SetTo(new MCvScalar(0));
         var airlight = new AirlightEstimate(new MCvScalar(0.86, 0.89, 0.92),
             new[] { 0.0, 0.0, 0.0 }, new[] { new MCvScalar(0.86, 0.89, 0.92) });
-        using var result = StationaryAtrous.EnhanceHcvValue(input, gains, gains, sigma,
+        using var result = StationaryAtrous.EnhanceHcvValue(input, gains, sigma,
             airlight, 4, 3, 0, 2, 0, 0.04);
         var actual = new float[source.Length]; result.LinearResult.CopyTo(actual);
         TestAssert.InRange(actual.Zip(source, (x, y) => Math.Abs(x - y)).Max(), 0, 3e-6);
 
         var constant = Enumerable.Repeat(0.4f, pixels * 3).ToArray();
         using var constantInput = ToMat(constant, rows, cols, 3);
-        using var constantResult = StationaryAtrous.EnhanceHcvValue(constantInput, gains, gains, sigma,
+        using var constantResult = StationaryAtrous.EnhanceHcvValue(constantInput, gains, sigma,
             airlight, 4, 3, 1.5, 2, 0, 0.04);
         var constantActual = new float[constant.Length]; constantResult.LinearResult.CopyTo(constantActual);
         TestAssert.InRange(constantActual.Zip(constant, (x, y) => Math.Abs(x - y)).Max(), 0, 3e-6);

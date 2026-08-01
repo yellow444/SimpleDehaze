@@ -31,7 +31,7 @@ namespace SimpleDeHaze.Methods
     {
         private static readonly float[] B3 = { 1f / 16, 4f / 16, 6f / 16, 4f / 16, 1f / 16 };
 
-        public static UtawResult EnhanceHcvValue(Mat recoveredLinear, Mat gainValue, Mat gainChroma,
+        public static UtawResult EnhanceHcvValue(Mat recoveredLinear, Mat gainValue,
             Mat sigmaDepth, AirlightEstimate airlight, int levels, int energyRadius,
             double detailBoost, double uncertaintyWeight, double noiseVariance, double bandLimit)
         {

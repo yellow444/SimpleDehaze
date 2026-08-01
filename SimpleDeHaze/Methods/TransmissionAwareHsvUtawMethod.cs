@@ -13,7 +13,7 @@ namespace SimpleDeHaze.Methods
             "Сохраняет recovery и визуальный характер исходного Transmission-aware, но заменяет " +
             "decimated Laplacian/Domain bands на stationary B3-spline à trous по HSV-V. " +
             "Коэффициент каждой полосы ограничивают local band power, t, noise и optical-depth " +
-            "расхождение CAP↔DCP; delta имеет явный energy cap против мозаичной фактуры.\n\n" +
+            "расхождение CAP↔DCP; delta имеет явный amplitude cap против мозаичной фактуры.\n\n" +
             "Stationary wavelets известны. Исследовательская гипотеза — joint reliability/budget, " +
             "а не замена Laplacian сама по себе.";
 

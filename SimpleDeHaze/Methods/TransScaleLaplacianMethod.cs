@@ -32,8 +32,8 @@ namespace SimpleDeHaze.Methods
             "1. t из ДВУХ приоров: Color Attenuation Prior (exp(-β·d)) и Dark Channel (1-ω·DC), берём min,\n" +
             "   уточняем Guided-фильтром.\n" +
             "2. Восстановление с локальным полем A(x) и защитой хромы.\n" +
-            "3. По умолчанию Laplacian-пирамида Lab-L; переключатели space/basis дают HSV-V и " +
-            "полноразмерные edge-aware residual bands. Мелкие полосы усиливаем ТОЛЬКО где t велико,\n" +
+            "3. По умолчанию Laplacian-пирамида Lab-L; переключатели space/basis дают HSV-V, " +
+            "полноразмерные edge-aware или stationary à trous bands (CPU/CUDA). Мелкие полосы усиливаем ТОЛЬКО где t велико,\n" +
             "   гасим где t мало (плотная дымка = шум); крупные контуры усиливаем везде.\n" +
             "4. Баланс белого + мягкий тон/вибранс.\n\n" +
             "Параметры t_lo/t_hi — где переключается «деталь ↔ шум» по пропусканию; gFine/gMid/gCoarse —\n" +

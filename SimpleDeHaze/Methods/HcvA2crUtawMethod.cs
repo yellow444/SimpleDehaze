@@ -33,7 +33,6 @@ namespace SimpleDeHaze.Methods
             using var enhanced = StationaryAtrous.EnhanceHcvValue(
                 physical.Recovery.LinearResult,
                 physical.Recovery.GainValue,
-                physical.Recovery.GainChroma,
                 physical.Scene.SigmaDepth,
                 physical.Scene.Airlight,
                 (int)p["uLevels"], (int)p["uRadius"], p["uDetail"], p["uUnc"],
