@@ -88,6 +88,16 @@ public sealed class TransmissionAwareTests
         TestAssert.InRange(values.Max(), 0, 1);
     }
 
+    public void Registry_ExposesBothTransmissionVariantsAndKeepsRejectedHsvRecoveriesOut()
+    {
+        TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware Laplacian (эксперимент)"));
+        TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware HSV Edge Bands (эксперимент)"));
+        string c3rName = MethodRegistry.All.Single(method => method is HsvC3rMethod).Name;
+        TestAssert.False(MethodRegistry.Recommended.Contains(c3rName));
+        string hsvA2crName = MethodRegistry.All.Single(method => method is HsvA2crMethod).Name;
+        TestAssert.False(MethodRegistry.Recommended.Contains(hsvA2crName));
+    }
+
     private static Image<Bgr, byte> RandomImage(int width, int height, int seed)
     {
         var input = new Image<Bgr, byte>(width, height);

@@ -79,8 +79,8 @@ namespace SimpleDeHaze.Methods
         public static readonly HashSet<string> Recommended = new()
         {
             "A²CR-Dehaze (dual-gain recovery, эксперимент)",
-            "HSV²CR (круговая цветность + A²CR, эксперимент)",
             "HSV + многомасштабная шероховатость (эксперимент)",
+            "Transmission-aware Laplacian (эксперимент)",
             "Transmission-aware HSV Edge Bands (эксперимент)",
             "Color Attenuation+ (адаптивная глубина, баланс белого)",
             "Color Attenuation Prior (HSV)",                        // лёгкий, хорошо держит контуры

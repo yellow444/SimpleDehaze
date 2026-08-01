@@ -47,6 +47,7 @@ internal static class Program
             (nameof(transmission.EdgeAwareBands_UnitGainReconstructsHsvInput), transmission.EdgeAwareBands_UnitGainReconstructsHsvInput),
             (nameof(transmission.HsvAndEdgeVariants_ProduceFiniteFeasibleOutput), transmission.HsvAndEdgeVariants_ProduceFiniteFeasibleOutput),
             (nameof(transmission.RegisteredHsvEdgeVariant_FreezesModesAndUsesValidatedDefaults), transmission.RegisteredHsvEdgeVariant_FreezesModesAndUsesValidatedDefaults),
+            (nameof(transmission.Registry_ExposesBothTransmissionVariantsAndKeepsRejectedHsvRecoveriesOut), transmission.Registry_ExposesBothTransmissionVariantsAndKeepsRejectedHsvRecoveriesOut),
             (nameof(npy.ReadsLittleEndianFloat32Matrix), npy.ReadsLittleEndianFloat32Matrix),
             (nameof(npy.ReadsBooleanMaskAsZeroOne), npy.ReadsBooleanMaskAsZeroOne),
             (nameof(metrics.HueError_IgnoresAchromaticPixelsAndIsZeroForIdentity), metrics.HueError_IgnoresAchromaticPixelsAndIsZeroForIdentity),
