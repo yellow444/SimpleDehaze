@@ -14,6 +14,9 @@
 | [research/audit-2026-07.md](research/audit-2026-07.md) | **Аудит**: новизна методов относительно литературы, проблемы методологии измерений, готовность к arXiv/Хабру, план работ. |
 | [research/physics-linear-spectral.md](research/physics-linear-spectral.md) | **Физика пайплайна**: линеаризация sRGB и её влияние на оценку $t$, спектральная модель $\beta(\lambda)$, точность яркостно-хромного разложения, вывод $t_{floor}$ из шума. |
 | [research/a2cr-data-protocol.md](research/a2cr-data-protocol.md) | **A²CR data protocol**: DIODE integrity/split, 22 500 streaming recipes, B0–B9/G0, LPIPS, метрики и real-paired результаты. |
+| [methods/hcv-a2cr-utaw.md](methods/hcv-a2cr-utaw.md) | **Exact HCV-A²CR**: airlight-normalized алгебра, два gain, feasible polygon, validity fusion и HCV-UTAW. |
+| [methods/transmission-aware-multiscale.md](methods/transmission-aware-multiscale.md) | **Transmission-aware Laplacian/Edge/UTAW**: CPU/GPU реализация, reliability, frozen test и noise trade-off. |
+| [research/hcv-a2cr-utaw-study-2026-08.md](research/hcv-a2cr-utaw-study-2026-08.md) | **NEW3 audit**: HCV отрицательные результаты, UTAW validation/frozen test четырёх наборов, AutoTuner, GPU и решение по статьям. |
 | [research/literature-review-2026-07.md](research/literature-review-2026-07.md) | Проверка ближайших работ и безопасная формулировка новизны A²CR/CAR. |
 | [methods/car-dehaze.md](methods/car-dehaze.md) | CAR-Dehaze, формулы chromatic anchor, сцена №08 и аудит автоподбора. |
 | [articles/habr-a2cr-car-hsv.md](articles/habr-a2cr-car-hsv.md) | Новая Habr-статья: HSV/CAP, A²CR, CAR, автоподбор, datasets и честные отрицательные результаты. |

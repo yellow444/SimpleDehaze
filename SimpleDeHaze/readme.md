@@ -2,8 +2,8 @@
 
 Экспериментальный стенд классического, non-ML удаления дымки на **.NET 8** через **Emgu.CV**.
 В проекте есть legacy DCP-реализации для **CPU** (`DeHazeCPU`) и **GPU/CUDA** (`DeHazeGPU`),
-а также модульный `Methods/` framework с DCP/CAP/RFEP-DCP/BRACE/PF-SFGF/LAF/GDR-SP/
-Gradient-Domain и enhancement-baselines.
+а также модульный `Methods/` framework из 59 методов: DCP/CAP/RFEP-DCP/BRACE/PF-SFGF/LAF/GDR-SP,
+A²CR, exact HCV-A²CR/fusion, Transmission-aware Laplacian/Edge/UTAW CPU+CUDA и enhancement-baselines.
 
 **Документация по алгоритму:** [docs/README.md](docs/README.md)
 > '4.8' в зависимостях - это версия Emgu CV / OpenCV, **не** .NET Framework. Проект на `net8.0`.
@@ -39,8 +39,9 @@ core-профилем, поэтому косметика не отключает
 
 ## Интерфейс (GUI)
 
-Окно: выбор **метода** (A²CR dual-gain recovery, legacy DCP CPU/GPU, CAP HSV, RFEP-DCP, BRACE-DCP, PF-SFGF,
-LAF-TV/WLS, GDR-SP, Gradient Domain, CLAHE/Retinex и др.), **ползунки параметров** под выбранный метод, кнопка
+Окно: выбор **метода** (A²CR/HCV dual-gain recovery, Transmission-aware UTAW CPU/GPU,
+legacy DCP CPU/GPU, CAP HSV, RFEP-DCP, BRACE-DCP, PF-SFGF, LAF-TV/WLS, GDR-SP,
+Gradient Domain, CLAHE/Retinex и др.), **ползунки параметров** под выбранный метод, кнопка
 **'Вычислить'** (считает в фоне, показывает время), панели **вход | результат** и
 **'Сохранить...'**. Каждый метод сам объявляет свои параметры, поэтому ползунки генерируются
 автоматически.
@@ -51,6 +52,8 @@ no-reference score, runtime и две явно собственные диагн
 Для воспроизводимых прогонов по `dataset/` есть headless-режим `--benchmark`; он пишет CSV
 без сохранения изображений и поддерживает manifests, фиксированные split, warm-up/repeat, измерение
 памяти и точную фиксацию параметров. Полный протокол: [REPRODUCIBILITY.md](../REPRODUCIBILITY.md).
+Отдельный executable сейчас выполняет 64 численных и регрессионных теста, включая HCV feasible
+projection, stationary à trous identity и условную CPU↔CUDA эквивалентность.
 
 Добавить новый метод (из [docs/methods](docs/methods/README.md)): реализуйте интерфейс
 `SimpleDeHaze.Methods.IDeHazeMethod` (имя, список `ParamDef`, метод `Process`) и впишите класс в

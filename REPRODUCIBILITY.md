@@ -200,34 +200,104 @@ dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release --no-build -- `
 (`30.797 → 33.846`). Это подтверждает отсутствие залипания поиска, но не заменяет validation/test
 разделение выше.
 
+## HCV-A²CR и validity fusion
+
+Exact HCV, HCV-UTAW и RGB baseline frozen test:
+
+```powershell
+dotnet SimpleDeHaze/bin/Release/net8.0-windows/win-x64/SimpleDeHaze.dll `
+  --benchmark --manifest=datasets/manifests/o-haze-in-repo.json --split=test `
+  --profile=core --maxdim=192 --evalfull --warmup=0 --repeat=1 --no-memory `
+  "--methods=^(A²CR-Dehaze|HCV-A²CR \(airlight-normalized|HCV-A²CR-UTAW)" `
+  --out=benchmark_results/hcv-frozen-clean-192/base-hcv-utaw.csv
+
+dotnet SimpleDeHaze/bin/Release/net8.0-windows/win-x64/SimpleDeHaze.dll `
+  --benchmark --manifest=datasets/manifests/o-haze-in-repo.json --split=test `
+  --profile=core --maxdim=192 --evalfull --warmup=0 --repeat=1 --no-memory `
+  "--methods=^HCV↔RGB A²CR validity fusion" --params="hcvPrior=.25" `
+  --out=benchmark_results/hcv-frozen-clean-192/fusion-hcvprior025.csv
+```
+
+`hcvPrior=.25` выбран на validation до test. Чистый запуск: commit `0609747`, 88/88 successful.
+Средние HCV/fusion дали немного выше SSIM, но хуже PSNR/DE00/clipping относительно A²CR;
+HCV-UTAW отрицателен по всем четырём показателям. Полные формулы и таблицы:
+`SimpleDeHaze/docs/research/hcv-a2cr-utaw-study-2026-08.md`.
+
 ## Transmission-aware RGB/HSV и basis ablation
 
-Структурные переключатели `space` (`0=Lab-L`, `1=HSV-V`) и `basis` (`0=Laplacian`,
-`1=edge-aware residual`) намеренно исключены из AutoTuner. Полная 2×2 validation-матрица
-запускается четырьмя командами с одинаковым manifest/profile; пример HSV edge:
+Структурные переключатели исключены из AutoTuner:
 
-```powershell
-dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release --no-build -- `
-  --benchmark --manifest=datasets/manifests/o-haze-in-repo.json --split=val `
-  --profile=full --maxdim=192 --evalfull --warmup=0 --repeat=1 --no-memory `
-  "--methods=^Transmission-aware Laplacian" --params="space=1,basis=1" `
-  --out=benchmark_results/trans-hsv-edge-val-192.csv
+| `basis` | Значение |
+|---:|---|
+| 0 | Laplacian pyramid |
+| 1 | Domain Transform edge residual bands |
+| 2 | stationary UTAW CPU |
+| 3 | stationary UTAW hybrid CUDA, с CPU fallback без CUDA |
+
+`space=0` означает float Lab-L, `space=1` — float HSV-V. Для научного сравнения используйте
+специализированные wrappers: они скрывают неактивные параметры чужого basis.
+
+Validation U1 был выбран из шести заранее заданных профилей на 94 парах четырёх наборов:
+
+```text
+gFine=0,gMid=1.3,gCoarse=1.1,uNoise=.006,uUnc=2,uRadius=3,uLimit=.025
 ```
 
-Замените `space,basis` на `0,0`, `1,0` и `0,1` для остальных ячеек. Зафиксированный после
-validation метод тестируется без изменения параметров:
+Шаблон validation-команды; меняются только manifest, output и заранее заданный `--params`:
 
 ```powershell
-dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release --no-build -- `
+dotnet SimpleDeHaze/bin/Release/net8.0-windows/win-x64/SimpleDeHaze.dll `
+  --benchmark --manifest=benchdata/NH-HAZE/simpledehaze-manifest.json --split=val `
+  --profile=full --maxdim=192 --evalfull --warmup=0 --repeat=1 --no-memory `
+  "--methods=^Transmission-aware HSV UTAW \(эксперимент\)$" `
+  --params="gFine=0,gMid=1.3,gCoarse=1.1,uNoise=.006,uUnc=2,uRadius=3,uLimit=.025" `
+  --out=benchmark_results/new3-utaw-reliability-val-192/u1-nh-haze-val.csv
+```
+
+После commit defaults frozen test запускается без overrides. Пример O-HAZE:
+
+```powershell
+dotnet SimpleDeHaze/bin/Release/net8.0-windows/win-x64/SimpleDeHaze.dll `
   --benchmark --manifest=datasets/manifests/o-haze-in-repo.json --split=test `
   --profile=full --maxdim=192 --evalfull --warmup=0 --repeat=1 --no-memory `
-  "--methods=^Transmission-aware HSV Edge Bands" `
-  --out=benchmark_results/trans-hsv-edge-test-192.csv
+  "--methods=^(Transmission-aware Laplacian \(эксперимент\)|Transmission-aware HSV Edge Bands \(эксперимент\)|Transmission-aware HSV UTAW \(эксперимент\))$" `
+  --out=benchmark_results/new3-utaw-u1-frozen-clean-192/o-haze-test.csv
 ```
 
-Timing нельзя брать из однопроходного 192 px прогона. Контрольный режим: первые 8 validation
-изображений, `--maxdim=800 --warmup=1 --repeat=3`. Таблицы, точные результаты, граница новизны и
-scene-08 caveat: `SimpleDeHaze/docs/research/transmission-aware-study-2026-08.md`.
+Для I-/Dense-/NH-HAZE меняются manifest и output. Итоговый frozen запуск: commit `bd4660a`,
+`dirty=false`, 91 пар, 273/273 successful.
+
+Прогретый CPU/GPU timing:
+
+```powershell
+dotnet SimpleDeHaze/bin/Release/net8.0-windows/win-x64/SimpleDeHaze.dll `
+  --benchmark --manifest=datasets/manifests/o-haze-in-repo.json --split=val --limit=8 `
+  --profile=full --maxdim=800 --evalfull --warmup=2 --repeat=5 --no-memory `
+  "--methods=^(Transmission-aware Laplacian|Transmission-aware HSV Edge Bands|Transmission-aware HSV UTAW)" `
+  --out=benchmark_results/transmission-utaw-u1-cpu-gpu-timing-clean-800.csv
+```
+
+На RTX 3080 hybrid GPU оказался на 1.9% медленнее CPU UTAW. CUDA parity test реально
+выполнился на этой машине и дал max abs `4.77e-7`; на машине без CUDA он пропускает сравнение,
+а GPU wrapper использует CPU fallback.
+
+Проверка AutoTuner:
+
+```powershell
+dotnet SimpleDeHaze/bin/Release/net8.0-windows/win-x64/SimpleDeHaze.dll `
+  --autotune-audit --maxeval=100 --evalmaxdim=192 --maxdim=192 --goal=ref `
+  "--methods=^Transmission-aware HSV UTAW \(эксперимент\)$" `
+  --out=benchmark_results/autotune-audit-trans-utaw-quick-100
+
+dotnet SimpleDeHaze/bin/Release/net8.0-windows/win-x64/SimpleDeHaze.dll `
+  --autotune-audit --thorough --maxeval=160 --evalmaxdim=192 --maxdim=192 --goal=ref `
+  "--methods=^Transmission-aware HSV UTAW \(эксперимент\)$" `
+  --out=benchmark_results/autotune-audit-trans-utaw-thorough-clean-160
+```
+
+Quick покрыл 9/9, thorough 25/25 активных координат; failures=0. Это mechanical audit, не
+разрешение подбирать параметры на test. Полные результаты и scene-08 caveat:
+`SimpleDeHaze/docs/research/hcv-a2cr-utaw-study-2026-08.md`.
 
 ## Внешние baseline
 
@@ -260,7 +330,7 @@ dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release -- --mathtest
 dotnet run --project SimpleDeHaze.Tests/SimpleDeHaze.Tests.csproj -c Release
 ```
 
-Обе команды возвращают 0 только при успехе. Отдельный test executable не зависит от VSTest/testhost,
+Обе команды возвращают 0 только при успехе. Текущий набор: 64/64 passed. Отдельный test executable не зависит от VSTest/testhost,
 которому некоторые Windows sandbox запрещают следить за родительским процессом. Проверяются:
 обратимость sRGB-кривой, точность модели по яркости в линейном RGB, корректность границ
 допустимости, identity-метрики, manifest split и запрет неявного core-профиля. Для A²CR
@@ -272,7 +342,10 @@ ray-feasible projections, точная polygon projection (20 000 случаев
 от fusion weight prior-disagreement variance, предельные случаи risk gain, 20 000 случайных
 cone/ray projections и конечность/допустимость полного pipeline. Дополнительно проверяются
 эталонные пары CIEDE2000 Sharma, формулы `beta=-ln(t90)/d90` и Poisson-Gaussian variance,
-а также отсутствие повторного `*255` для уже 8-битного LPIPS-входа.
+а также отсутствие повторного `*255` для уже 8-битного LPIPS-входа. Для HCV/UTAW дополнительно
+проверяются exact scalar inverse, 20 000 HCV feasible projections, propagation variance вокруг
+refined `t`, family-balanced fusion, à trous identity/constant safety, float Lab round-trip,
+finite output новых pipelines и условная CPU↔CUDA эквивалентность.
 
 ## Что фиксировать при публикации чисел
 

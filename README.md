@@ -5,19 +5,18 @@
 Текущий центральный эксперимент — [A²CR-Dehaze](SimpleDeHaze/docs/methods/a2cr-dehaze.md):
 airlight-aligned оператор восстановления с двумя uncertainty-aware gains и точной RGB-feasible
 проекцией. Это проверяемый кандидат на исследовательский вклад, а не заявленная мировая новизна.
-Для HSV добавлен отдельный [HSV²CR](SimpleDeHaze/docs/methods/hsv-a2cr.md): он сохраняет
-физическую инверсию в linear RGB, но затем независимо регулирует V и круговую цветность
-`(S cos H, S sin H)`, не ломая Hue на границе 0/360°. После авторской визуальной проверки он
-удалён из curated-набора и сохранён только как воспроизводимая абляция.
-Экспериментальная цилиндрическая ветвь [C³R-HSV](SimpleDeHaze/docs/methods/c3r-hsv.md)
-использует координаты `(V, SV cos H, SV sin H)`, три uncertainty-aware gain и выпуклый
-saturation/value-коридор. Проверка дала отрицательный результат: метод оставлен для абляций,
-удалён из curated-набора и не рассматривается как точная атмосферная модель в HSV.
-Для визуально сильной perceptual-ветви добавлено контролируемое сравнение
-[Transmission-aware Lab-L/HSV-V и Laplacian/edge bands](SimpleDeHaze/docs/methods/transmission-aware-multiscale.md).
-Зафиксированный HSV edge-вариант улучшил прежний baseline по SSIM на 21/22 O-HAZE test-кадрах,
-но оказался примерно на 13% медленнее и иногда усиливает мозаичную микротекстуру; это
-quality-кандидат, а не объявленный speed/SOTA результат.
+Для цвета теперь есть три уровня эксперимента. [HSV²CR](SimpleDeHaze/docs/methods/hsv-a2cr.md)
+и [C³R-HSV](SimpleDeHaze/docs/methods/c3r-hsv.md) сохранены как отрицательные абляции.
+[HCV-A²CR](SimpleDeHaze/docs/methods/hcv-a2cr-utaw.md) использует точную airlight-normalized
+репараметризацию linear-RGB atmospheric model, два gain и RGB-feasible polygon. На frozen test
+HCV/fusion немного подняли SSIM, но ухудшили PSNR, DE00 и clipping; основной A²CR они не заменяют.
+
+Для визуально сильной perceptual-ветви реализованы
+[Transmission-aware Laplacian, HSV Edge и stationary UTAW](SimpleDeHaze/docs/methods/transmission-aware-multiscale.md).
+Validation-selected UTAW проверен на 91 test-паре O-/I-/Dense-/NH-HAZE: SSIM лучше старого
+варианта на 91/91 и Edge на 86/91, однако flat-noise хуже Edge на 89/91. Hybrid CUDA численно
+эквивалентен CPU, но end-to-end на RTX 3080 на 1.9% медленнее. Это structural-quality кандидат,
+а не speed/SOTA claim. [Полный NEW3 audit](SimpleDeHaze/docs/research/hcv-a2cr-utaw-study-2026-08.md).
 Данные, DIODE scene split, 22 500 controlled recipes, полный прогон 112 500 строк, настоящий LPIPS
 на 364 real-paired результатах и честные отрицательные выводы зафиксированы в
 [A²CR data protocol](SimpleDeHaze/docs/research/a2cr-data-protocol.md).
@@ -26,6 +25,10 @@ quality-кандидат, а не объявленный speed/SOTA резуль
 [проверенный PDF](output/pdf/a2cr-recovery-preprint.pdf),
 [новая статья для Habr](SimpleDeHaze/docs/articles/habr-a2cr-car-hsv.md),
 [CAR и сцена №08](SimpleDeHaze/docs/methods/car-dehaze.md).
+
+Публикационное решение после NEW3: пока сохраняется одна основная статья A²CR. HCV добавляется
+как математическая/отрицательная абляция, UTAW — как ongoing branch; отдельные статьи появятся
+только после blind study и устранения noise/clipping trade-off.
 
 
 #### Преимущества подхода:<a id="преимущества-подхода"></a>

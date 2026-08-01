@@ -97,9 +97,11 @@ flowchart TD
 | [MST Tree Filter](mst-graph-filter.md) | реализовано CPU | граф + MST + DP | уточнение $t$ | $O(N)$, много массивов | build $O(N\log N)$ + агрегация $O(N)$ | резкие границы |
 | [Color Cube / Haze-Lines](color-cube-projection.md) | реализовано упрощённо | вектор. геометрия цвета | весь пайплайн | $O(N+K^3)$ | низкая-средняя | цветовые линии, мало параметров |
 | [A²CR-Dehaze](a2cr-dehaze.md) | эксперимент | airlight-aligned dual-gain inverse + uncertainty risk | оператор recovery | $O(kN)$ + optional TV | средняя | RGB-feasible recovery; новизна требует внешней проверки |
+| [HCV-A²CR / validity fusion / HCV-UTAW](hcv-a2cr-utaw.md) | эксперимент | exact `I/A` HCV basis + two gains + convex feasible polygon | recovery/ablation | $O(kN)$ | средняя-высокая | точная репараметризация; frozen test не превзошёл A²CR |
 | [HSV²CR](hsv-a2cr.md) | эксперимент | A²CR proposal + circular HSV dual-field risk | bounded recovery/post-stage | $O(kN)$ | средняя | корректный seam Hue и независимые V/chroma веса |
 | [C³R-HSV](c3r-hsv.md) | эксперимент | cylindrical `(V,SV cosH,SV sinH)` + three uncertainty gains + SOC corridor | recovery | $O(N)$ + filters | средняя | круговой Hue и гарантированная HSV-feasibility; физика приближённая |
-| [Transmission-aware HSV Edge Bands](transmission-aware-multiscale.md) | эксперимент | HSV-V + Domain Transform residual bands + transmission/scale gate | multiscale post-recovery | $O(kN)$ | средняя | O-HAZE test SSIM-win 21/22 против Lab-L baseline; не speedup, возможна мозаика |
+| [Transmission-aware HSV Edge Bands](transmission-aware-multiscale.md) | эксперимент/абляция | HSV-V + Domain Transform residual bands + transmission/scale gate | multiscale post-recovery | $O(kN)$ | средняя | более гладкий noise/clipping control; возможна мозаика |
+| [Transmission-aware HSV UTAW CPU/GPU](transmission-aware-multiscale.md) | эксперимент | stationary B3 à trous + noise/t/prior-disagreement reliability | multiscale post-recovery | $O(kN)$ | средняя; hybrid CUDA | SSIM-win 91/91 против Laplacian, но flat-noise хуже Edge 89/91; speedup нет |
 | [CAR-Dehaze](car-dehaze.md) | эксперимент | глобально-якорный chroma residual + локальный airlight | recovery/fusion | $O(N)$ + filters | средняя | возвращает `a*` стены №08, но default даёт ложные chroma-пятна |
 | [Boundary-Constrained Prior Fusion (RFEP)](rfep-dcp.md) | реализовано | DCP + robust HSV + boundary projection | prior fusion + feasible transmission envelope | $O(N)+O(N/s^2)$ | низкая-средняя | экспериментальная композиция; сама RGB-bound известна из Meng et al. (2013) |
 | [BRACE-DCP](brace-dcp.md) | реализовано | DCP + HSV/CAP + confidence fusion | грубая $\tilde t$ + bright/sky handling | $O(N)$ | низкая-средняя | сильный first-release hybrid prior |
@@ -150,6 +152,8 @@ flowchart TD
 
 - [multiscale-dcp-fusion.md](multiscale-dcp-fusion.md) - несколько радиусов тёмного канала (`DCP - Multi-Scale Fusion`).
 - [a2cr-dehaze.md](a2cr-dehaze.md) - airlight-aligned uncertainty-aware dual-gain recovery.
+- [hcv-a2cr-utaw.md](hcv-a2cr-utaw.md) - exact HCV-A²CR, validity fusion и stationary HCV-UTAW.
+- [transmission-aware-multiscale.md](transmission-aware-multiscale.md) - Laplacian/Edge/UTAW CPU+CUDA и frozen multi-dataset comparison.
 - [rfep-dcp.md](rfep-dcp.md) - boundary-constrained projection layer (`RFEP-DCP`).
 - [pf-sfgf.md](pf-sfgf.md) - DCP-пирамида + Fast GF + bounded spectral gain (`PF-SFGF`).
 - [dual-channel-confidence-prior.md](dual-channel-confidence-prior.md) - DCP + bright/saturation priors, лучше небо/белое (`DCP - Dual-Channel`).

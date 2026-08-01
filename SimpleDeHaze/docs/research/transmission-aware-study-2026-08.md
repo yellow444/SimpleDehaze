@@ -2,6 +2,10 @@
 
 Дата фиксации: 2026-08-01.
 
+> Исторический этап Edge-абляции. Последующий UTAW sweep и frozen test четырёх наборов
+> зафиксированы в [NEW3/HCV/UTAW отчёте](hcv-a2cr-utaw-study-2026-08.md). Текущий curated
+> structural-вариант — HSV UTAW U1; HSV Edge сохранён как контроль.
+
 ## Вопрос
 
 Можно ли сохранить визуально сильное удаление пелены исходного Transmission-aware, но улучшить
@@ -104,3 +108,24 @@ Quick audit на отдельном development-изображении: 80 ун�
    а не приписывать её новому basis.
 6. После внешней проверки провести blind pairwise study: старый Transmission-aware, HSV-Laplacian,
    HSV-edge E3 и A²CR.
+
+## Follow-up: stationary UTAW
+
+Пункт 4 выполнен без заявления новизны wavelet basis. Добавлен undecimated B3-spline à trous
+stage с reliability из локальной мощности, `noise²/t²` и CAP↔DCP optical-depth disagreement,
+а также ограничением амплитуды каждой добавки. Validation U1 выбран на 94 парах четырёх наборов;
+затем один раз открыт общий frozen test.
+
+| 91 test-пара | PSNR ↑ | SSIM ↑ | DE00 ↓ | Clip % ↓ | Flat-noise × ↓ |
+|---|---:|---:|---:|---:|---:|
+| Lab-L Laplacian | 12.0503 | 0.3984 | 22.7291 | 15.7387 | 1.7180 |
+| HSV Edge | 12.1169 | 0.4381 | 22.6803 | **13.0613** | **1.4849** |
+| HSV UTAW U1 | **12.1703** | **0.4735** | **22.5740** | 14.7793 | 1.8724 |
+
+UTAW выигрывает SSIM у старого метода на 91/91 и у Edge на 86/91, но уступает Edge по
+flat-noise на 89/91. Следовательно, прежняя проблема мозаики уменьшена, но общий noise trade-off
+не решён. Edge исключён из curated-набора, однако остаётся полезным более гладким контролем.
+
+Hybrid CUDA дал численно тот же результат (`max abs 4.77e-7`), но в clean 800 px timing оказался
+на 1.9% медленнее CPU UTAW. Подробные формулы, команды и ограничения находятся в актуальном
+[методическом документе](../methods/transmission-aware-multiscale.md).
