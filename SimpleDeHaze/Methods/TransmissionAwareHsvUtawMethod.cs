@@ -24,9 +24,12 @@ namespace SimpleDeHaze.Methods
                 definition.Key, definition.Label, definition.Min, definition.Max,
                 definition.Key switch
                 {
-                    "gFine" => 0.5,
-                    "gMid" => 1.6,
-                    "gCoarse" => 1.2,
+                    "gFine" => 0.0,
+                    "gMid" => 1.3,
+                    "gCoarse" => 1.1,
+                    "uNoise" => 0.006,
+                    "uUnc" => 2.0,
+                    "uLimit" => 0.025,
                     _ => definition.Default,
                 }, definition.Step, definition.IsInt, definition.Log,
                 definition.Search || definition.Key is "uNoise" or "uUnc" or "uLimit",

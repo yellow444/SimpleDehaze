@@ -117,6 +117,14 @@ public sealed class TransmissionAwareTests
         }
         TestAssert.False(method.Parameters.Single(parameter => parameter.Key == "uRadius").Search);
         TestAssert.True(method.Parameters.Single(parameter => parameter.Key == "uRadius").Tunable);
+        var defaults = method.Parameters.ToDictionary(parameter => parameter.Key, parameter => parameter.Default);
+        TestAssert.InRange(Math.Abs(defaults["gFine"] - 0.0), 0, 1e-12);
+        TestAssert.InRange(Math.Abs(defaults["gMid"] - 1.3), 0, 1e-12);
+        TestAssert.InRange(Math.Abs(defaults["gCoarse"] - 1.1), 0, 1e-12);
+        TestAssert.InRange(Math.Abs(defaults["uNoise"] - 0.006), 0, 1e-12);
+        TestAssert.InRange(Math.Abs(defaults["uUnc"] - 2.0), 0, 1e-12);
+        TestAssert.InRange(Math.Abs(defaults["uRadius"] - 3.0), 0, 1e-12);
+        TestAssert.InRange(Math.Abs(defaults["uLimit"] - 0.025), 0, 1e-12);
     }
 
     public void AtrousUnitGain_ReconstructsHsvAndFloatLabInputs()
