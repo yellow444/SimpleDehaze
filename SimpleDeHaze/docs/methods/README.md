@@ -98,6 +98,7 @@ flowchart TD
 | [Color Cube / Haze-Lines](color-cube-projection.md) | реализовано упрощённо | вектор. геометрия цвета | весь пайплайн | $O(N+K^3)$ | низкая-средняя | цветовые линии, мало параметров |
 | [A²CR-Dehaze](a2cr-dehaze.md) | эксперимент | airlight-aligned dual-gain inverse + uncertainty risk | оператор recovery | $O(kN)$ + optional TV | средняя | RGB-feasible recovery; новизна требует внешней проверки |
 | [HSV²CR](hsv-a2cr.md) | эксперимент | A²CR proposal + circular HSV dual-field risk | bounded recovery/post-stage | $O(kN)$ | средняя | корректный seam Hue и независимые V/chroma веса |
+| [C³R-HSV](c3r-hsv.md) | эксперимент | cylindrical `(V,SV cosH,SV sinH)` + three uncertainty gains + SOC corridor | recovery | $O(N)$ + filters | средняя | круговой Hue и гарантированная HSV-feasibility; физика приближённая |
 | [CAR-Dehaze](car-dehaze.md) | эксперимент | глобально-якорный chroma residual + локальный airlight | recovery/fusion | $O(N)$ + filters | средняя | возвращает `a*` стены №08, но default даёт ложные chroma-пятна |
 | [Boundary-Constrained Prior Fusion (RFEP)](rfep-dcp.md) | реализовано | DCP + robust HSV + boundary projection | prior fusion + feasible transmission envelope | $O(N)+O(N/s^2)$ | низкая-средняя | экспериментальная композиция; сама RGB-bound известна из Meng et al. (2013) |
 | [BRACE-DCP](brace-dcp.md) | реализовано | DCP + HSV/CAP + confidence fusion | грубая $\tilde t$ + bright/sky handling | $O(N)$ | низкая-средняя | сильный first-release hybrid prior |

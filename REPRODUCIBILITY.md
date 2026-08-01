@@ -156,6 +156,50 @@ dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release -- --benchmark 
 `benchmark_results/core-lpips-*-haze-test-800.csv` и
 `benchmark_results/core-lpips-real-paired-test-800-summary.csv`: 364/364 строк успешны.
 
+## C³R-HSV validation/test pilot
+
+C³R сравнивается с A²CR и HSV²CR на одном manifest и одинаковом уменьшенном разрешении. Пилот
+предназначен для проверки гипотезы, а не для основного native-resolution результата:
+
+```powershell
+dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release -- --benchmark `
+  --manifest=datasets/manifests/o-haze-in-repo.json --split=test --profile=core `
+  --maxdim=192 --evalfull --warmup=0 --repeat=1 --no-memory `
+  --methods="^(A²CR-Dehaze|HSV²CR|C³R-HSV)" `
+  --out=benchmark_results/c3r-ohaze-test-192.csv
+```
+
+Пять заранее заданных C³R-конфигураций сначала прогоняются только на `--split=val`. Победившая
+конфигурация `v2` (`noise=0,unc=0,satRoom=1,hueGuard=0,hueMax=60,maxGain=10`) затем ровно один
+раз фиксируется на test:
+
+```powershell
+dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release -- --benchmark `
+  --manifest=datasets/manifests/o-haze-in-repo.json --split=test --profile=core `
+  --maxdim=192 --evalfull --warmup=0 --repeat=1 --no-memory `
+  --methods="^C³R-HSV" `
+  --params="noise=0,unc=0,satRoom=1,hueGuard=0,hueMax=60,maxGain=10" `
+  --out=benchmark_results/c3r-ohaze-test-v2-frozen-192.csv
+```
+
+Средние test-результаты: A²CR 16.90/0.81/14.04, HSV²CR 16.61/0.78/14.30,
+C³R-default 15.08/0.64/15.48 и C³R-v2 15.84/0.67/14.72 по PSNR/SSIM/CIEDE2000.
+C³R-v2 даёт 0% value clipping, но уступает A²CR по PSNR на 20/22 и SSIM на 21/22 изображениях.
+Это заранее сохранённый отрицательный результат, а не основание менять test-параметры.
+
+Отдельный quick audit проверяет механику поиска, но не является публикационным подбором:
+
+```powershell
+dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release --no-build -- `
+  --autotune-audit --maxeval=80 --evalmaxdim=192 --maxdim=192 --goal=ref `
+  "--methods=^C³R-HSV" --out=benchmark_results/autotune-audit-c3r-80
+```
+
+Зафиксированный запуск дал 80 уникальных evaluation, 50 cache hits, 0 failures, полное покрытие
+всех пяти search-координат и изменение 5/5 параметров. Full-resolution objective не ухудшился
+(`30.797 → 33.846`). Это подтверждает отсутствие залипания поиска, но не заменяет validation/test
+разделение выше.
+
 ## Внешние baseline
 
 Предварительно рассчитанные результаты BCCR/PF-DCP/non-local/Tarel и других реализаций оцениваются
@@ -195,7 +239,9 @@ dotnet run --project SimpleDeHaze.Tests/SimpleDeHaze.Tests.csproj -c Release
 ray-feasible projections, точная polygon projection (20 000 случаев), cached/direct equivalence
 (5 000 случаев), weighted optical-depth median/MAD, уменьшение joint-TV objective и feasibility
 каждого пикселя, DIODE `.npy` float/mask
-и корректное исключение ахроматических пикселей из hue error. Дополнительно проверяются
+и корректное исключение ахроматических пикселей из hue error. Для C³R проверяются независимая
+от fusion weight prior-disagreement variance, предельные случаи risk gain, 20 000 случайных
+cone/ray projections и конечность/допустимость полного pipeline. Дополнительно проверяются
 эталонные пары CIEDE2000 Sharma, формулы `beta=-ln(t90)/d90` и Poisson-Gaussian variance,
 а также отсутствие повторного `*255` для уже 8-битного LPIPS-входа.
 
@@ -216,8 +262,8 @@ python tools/build_publication_figures.py
 pwsh paper/a2cr-dehaze/build.ps1
 ```
 
-LaTeX source: `paper/a2cr-dehaze/`. Проверенный PDF:
-`output/pdf/a2cr-dehaze-preprint.pdf`. Habr draft:
+LaTeX source: `paper/a2cr-dehaze/`. Проверенный объединённый PDF:
+`output/pdf/a2cr-c3r-preprint.pdf`. Habr draft:
 `SimpleDeHaze/docs/articles/habr-a2cr-car-hsv.md`. Literature search protocol:
 `SimpleDeHaze/docs/research/literature-review-2026-07.md`.
 

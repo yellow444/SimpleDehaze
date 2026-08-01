@@ -1,7 +1,9 @@
-# A2CR arXiv source package
+# A²CR + C³R arXiv source package
 
-This directory is self-contained for compilation and upload. It is a research preprint draft,
-not an arXiv submission record and not a claim of state-of-the-art performance.
+This directory is self-contained for compilation and upload. It presents A²CR as the primary
+linear-RGB recovery contribution and C³R as a complementary cylindrical-HSV negative ablation.
+It is a research preprint draft, not an arXiv submission record and not a claim of state-of-the-art
+performance.
 
 Build on Windows with MiKTeX:
 
@@ -12,7 +14,7 @@ Build on Windows with MiKTeX:
 The script uses `latexmk` when Perl is available and otherwise runs the explicit
 `pdflatex -> bibtex -> pdflatex -> pdflatex` sequence.
 
-The checked PDF is `output/pdf/a2cr-dehaze-preprint.pdf` at repository root. The two vector figures
+The checked PDF is `output/pdf/a2cr-c3r-preprint.pdf` at repository root. The two vector figures
 are generated from reviewed raw artifacts with `python tools/build_publication_figures.py`, then
 copied into `figures/` to keep the upload independent of the repository layout.
 

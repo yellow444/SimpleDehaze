@@ -95,18 +95,21 @@ namespace SimpleDeHaze.Methods
             using var tCap = BuildCapTransmission(
                 saturationSrgb, valueSrgb, beta, rMin, rGuide, guidedEps);
 
-            using var dark = DehazeCore.DarkChannel(inputSrgb, patch);
-            MCvScalar airlightSrgb = DehazeCore.Atmospheric(inputSrgb, dark, 0.001);
-            using var tDcpRaw = DehazeCore.RawTransmission(inputSrgb, airlightSrgb, omega, patch);
+            // DCP и atmospheric inverse должны работать по радиансу, а не по gamma-coded sRGB.
+            // CAP остаётся в исходном sRGB/HSV, поскольку его коэффициенты обучены именно там.
+            using var inputLinear = ColorSpace.NormalizeLinear(input);
+            using var darkLinear = DehazeCore.DarkChannel(inputLinear, patch);
+            MCvScalar airlightLinear = DehazeCore.Atmospheric(inputLinear, darkLinear, 0.001);
+            using var tDcpRaw = DehazeCore.RawTransmission(inputLinear, airlightLinear, omega, patch);
+            using var linearGuide = ColorSpace.Luminance(inputLinear);
             using var tDcp = new Mat();
-            XImgprocInvoke.GuidedFilter(valueSrgb, tDcpRaw, tDcp, rGuide, guidedEps);
+            XImgprocInvoke.GuidedFilter(linearGuide, tDcpRaw, tDcp, rGuide, guidedEps);
 
             using var transmission = new Mat();
             using var transmissionVariance = new Mat();
             FuseTransmissionInOpticalDepth(
                 tCap, tDcp, capWeight, tMin, transmission, transmissionVariance);
 
-            using var inputLinear = SrgbToLinear(inputSrgb);
             using var hsvLinear = new Mat();
             CvInvoke.CvtColor(inputLinear, hsvLinear, ColorConversion.Bgr2Hsv);
             var hsvLinearChannels = hsvLinear.Split();
@@ -115,9 +118,9 @@ namespace SimpleDeHaze.Methods
             using var value = hsvLinearChannels[2];
 
             BgrToHsv(
-                SrgbToLinear(airlightSrgb.V0),
-                SrgbToLinear(airlightSrgb.V1),
-                SrgbToLinear(airlightSrgb.V2),
+                airlightLinear.V0,
+                airlightLinear.V1,
+                airlightLinear.V2,
                 out double airHue,
                 out double airSaturation,
                 out double airValue);
@@ -330,7 +333,7 @@ namespace SimpleDeHaze.Methods
 
             using var outputLinear = new Mat();
             CvInvoke.CvtColor(outputHsv, outputLinear, ColorConversion.Hsv2Bgr);
-            using var outputSrgb = LinearToSrgb(outputLinear);
+            using var outputSrgb = ColorSpace.ToSrgb(outputLinear);
             return outputSrgb.Clone();
         }
 
@@ -373,7 +376,7 @@ namespace SimpleDeHaze.Methods
         /// Var(D)=w(1-w)(D_CAP-D_DCP)^2,
         /// Var(t)≈t^2 Var(D).
         /// </summary>
-        private static void FuseTransmissionInOpticalDepth(
+        internal static void FuseTransmissionInOpticalDepth(
             Mat tCap,
             Mat tDcp,
             double capWeight,
@@ -399,10 +402,12 @@ namespace SimpleDeHaze.Methods
                 double meanDepth = w * capDepth + (1.0 - w) * dcpDepth;
                 double meanTransmission =
                     Math.Clamp(Math.Exp(-meanDepth), minTransmission, 1.0);
-                double depthVariance =
-                    w * (1.0 - w) *
-                    (capDepth - dcpDepth) *
-                    (capDepth - dcpDepth);
+                // Disagreement is evidence independent of the fusion preference. Using
+                // w(1-w) here allowed capWeight=0/1 to erase uncertainty, giving AutoTuner a
+                // shortcut instead of a real quality trade-off. The equal-prior variance is
+                // retained even when the mean deliberately favors one estimator.
+                double depthDifference = capDepth - dcpDepth;
+                double depthVariance = 0.25 * depthDifference * depthDifference;
 
                 meanData[i] = (float)meanTransmission;
                 varianceData[i] = (float)Math.Clamp(
@@ -467,7 +472,7 @@ namespace SimpleDeHaze.Methods
         /// R(g)=S[(g*t-1)^2+g^2 Var(t)] + N*g^2 + Q*(g-1)^2:
         /// g*=(S*t+Q)/(S*(t^2+Var(t))+N+Q).
         /// </summary>
-        private static Mat ComputeRiskGain(
+        internal static Mat ComputeRiskGain(
             Mat signal,
             Mat noise,
             Mat modelPenalty,
@@ -475,10 +480,6 @@ namespace SimpleDeHaze.Methods
             Mat transmissionVariance,
             double maxGain)
         {
-            using var numerator = new Mat();
-            CvInvoke.Multiply(signal, transmission, numerator);
-            CvInvoke.Add(numerator, modelPenalty, numerator);
-
             using var transmissionSquared = new Mat();
             CvInvoke.Multiply(transmission, transmission, transmissionSquared);
             CvInvoke.Add(
@@ -486,8 +487,28 @@ namespace SimpleDeHaze.Methods
                 transmissionVariance,
                 transmissionSquared);
 
+            // LocalSecondMoment observes the hazy residual. Convert it to an estimate of the
+            // latent component energy before inserting it into the risk, matching the A²CR
+            // derivation: S=max(E[d_obs²]-N,0)/(t²+Var(t)).
+            using var latentSignal = new Mat();
+            CvInvoke.Subtract(signal, noise, latentSignal);
+            using (var zero = new Mat(latentSignal.Size, DepthType.Cv32F, 1))
+            {
+                zero.SetTo(new MCvScalar(0));
+                CvInvoke.Max(latentSignal, zero, latentSignal);
+            }
+            using (var stableSecondMoment = transmissionSquared.Clone())
+            {
+                CvInvoke.Add(stableSecondMoment, new ScalarArray(1e-8), stableSecondMoment);
+                CvInvoke.Divide(latentSignal, stableSecondMoment, latentSignal);
+            }
+
+            using var numerator = new Mat();
+            CvInvoke.Multiply(latentSignal, transmission, numerator);
+            CvInvoke.Add(numerator, modelPenalty, numerator);
+
             using var denominator = new Mat();
-            CvInvoke.Multiply(signal, transmissionSquared, denominator);
+            CvInvoke.Multiply(latentSignal, transmissionSquared, denominator);
             CvInvoke.Add(denominator, noise, denominator);
             CvInvoke.Add(denominator, modelPenalty, denominator);
             CvInvoke.Add(denominator, new ScalarArray(1e-8), denominator);
@@ -523,7 +544,7 @@ namespace SimpleDeHaze.Methods
         /// для которого 0&lt;=V&lt;=1 и ||c||&lt;=saturationCap*V. z0 — входной HSV-пиксель,
         /// поэтому допустимое множество никогда не пусто.
         /// </summary>
-        private static void ProjectAlongInputRay(
+        internal static void ProjectAlongInputRay(
             double inputValue,
             double inputCx,
             double inputCy,
@@ -587,7 +608,7 @@ namespace SimpleDeHaze.Methods
             outputCy = inputCy + alpha * deltaCy;
         }
 
-        private static bool IsInsideSaturationCone(
+        internal static bool IsInsideSaturationCone(
             double inputValue,
             double inputCx,
             double inputCy,
@@ -613,90 +634,6 @@ namespace SimpleDeHaze.Methods
             var data = new float[count];
             source.CopyTo(data);
             return data;
-        }
-
-        private static Mat SrgbToLinear(Mat srgb)
-        {
-            var sourceChannels = srgb.Split();
-            var targetChannels = new Mat[sourceChannels.Length];
-
-            try
-            {
-                for (int channel = 0; channel < sourceChannels.Length; channel++)
-                {
-                    int count = sourceChannels[channel].Rows * sourceChannels[channel].Cols;
-                    var data = CopySingleChannel(sourceChannels[channel], count);
-                    for (int i = 0; i < count; i++)
-                        data[i] = (float)SrgbToLinear(data[i]);
-
-                    targetChannels[channel] = DehazeCore.MatFromFloats(
-                        data,
-                        sourceChannels[channel].Rows,
-                        sourceChannels[channel].Cols);
-                }
-
-                var result = new Mat();
-                using var vector = new VectorOfMat(targetChannels);
-                CvInvoke.Merge(vector, result);
-                return result;
-            }
-            finally
-            {
-                foreach (var channel in sourceChannels)
-                    channel.Dispose();
-                foreach (var channel in targetChannels)
-                    channel?.Dispose();
-            }
-        }
-
-        private static Mat LinearToSrgb(Mat linear)
-        {
-            var sourceChannels = linear.Split();
-            var targetChannels = new Mat[sourceChannels.Length];
-
-            try
-            {
-                for (int channel = 0; channel < sourceChannels.Length; channel++)
-                {
-                    int count = sourceChannels[channel].Rows * sourceChannels[channel].Cols;
-                    var data = CopySingleChannel(sourceChannels[channel], count);
-                    for (int i = 0; i < count; i++)
-                        data[i] = (float)LinearToSrgb(data[i]);
-
-                    targetChannels[channel] = DehazeCore.MatFromFloats(
-                        data,
-                        sourceChannels[channel].Rows,
-                        sourceChannels[channel].Cols);
-                }
-
-                var result = new Mat();
-                using var vector = new VectorOfMat(targetChannels);
-                CvInvoke.Merge(vector, result);
-                return result;
-            }
-            finally
-            {
-                foreach (var channel in sourceChannels)
-                    channel.Dispose();
-                foreach (var channel in targetChannels)
-                    channel?.Dispose();
-            }
-        }
-
-        private static double SrgbToLinear(double value)
-        {
-            double x = Math.Clamp(value, 0.0, 1.0);
-            return x <= 0.04045
-                ? x / 12.92
-                : Math.Pow((x + 0.055) / 1.055, 2.4);
-        }
-
-        private static double LinearToSrgb(double value)
-        {
-            double x = Math.Clamp(value, 0.0, 1.0);
-            return x <= 0.0031308
-                ? 12.92 * x
-                : 1.055 * Math.Pow(x, 1.0 / 2.4) - 0.055;
         }
 
         private static void BgrToHsv(

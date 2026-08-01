@@ -7,6 +7,7 @@ internal static class Program
         var physical = new PhysicalCoreTests();
         var benchmark = new BenchmarkContractTests();
         var a2cr = new A2crTests();
+        var c3r = new C3rTests();
         var npy = new NpyReaderTests();
         var metrics = new BenchmarkMetricTests();
         var diode = new DiodeFormulaTests();
@@ -37,6 +38,10 @@ internal static class Program
             (nameof(a2cr.HsvRecovery_InterpolatesHueAcrossCircularSeam), a2cr.HsvRecovery_InterpolatesHueAcrossCircularSeam),
             (nameof(a2cr.HsvRecovery_UncertaintyShrinksBothIndependentUpdates), a2cr.HsvRecovery_UncertaintyShrinksBothIndependentUpdates),
             (nameof(a2cr.HsvMethod_DefaultPipeline_ProducesFiniteFeasibleOutput), a2cr.HsvMethod_DefaultPipeline_ProducesFiniteFeasibleOutput),
+            (nameof(c3r.OpticalFusion_EndpointWeightCannotErasePriorDisagreement), c3r.OpticalFusion_EndpointWeightCannotErasePriorDisagreement),
+            (nameof(c3r.RiskGain_RecoversInverseAndFallsBackUnderUncertainty), c3r.RiskGain_RecoversInverseAndFallsBackUnderUncertainty),
+            (nameof(c3r.ConeProjection_IsFeasibleAndRemainsOnInputCandidateSegment), c3r.ConeProjection_IsFeasibleAndRemainsOnInputCandidateSegment),
+            (nameof(c3r.DefaultPipeline_ProducesFiniteFeasibleOutput), c3r.DefaultPipeline_ProducesFiniteFeasibleOutput),
             (nameof(npy.ReadsLittleEndianFloat32Matrix), npy.ReadsLittleEndianFloat32Matrix),
             (nameof(npy.ReadsBooleanMaskAsZeroOne), npy.ReadsBooleanMaskAsZeroOne),
             (nameof(metrics.HueError_IgnoresAchromaticPixelsAndIsZeroForIdentity), metrics.HueError_IgnoresAchromaticPixelsAndIsZeroForIdentity),

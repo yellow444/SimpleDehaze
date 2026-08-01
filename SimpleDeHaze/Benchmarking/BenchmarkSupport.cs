@@ -140,6 +140,11 @@ internal static class BenchmarkProfiles
             case A2crMethod:
                 Set(p, "tv", 0);
                 return true;
+            case HsvA2crMethod:
+                Set(p, "tv", 0);
+                return true;
+            case HsvC3rMethod:
+                return true;
             case ColorCubeMethod:
                 return true;
             case RfepDcpMethod:

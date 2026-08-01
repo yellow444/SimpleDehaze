@@ -255,7 +255,7 @@ dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release -- `
 
 Точные команды DIODE, LPIPS, real-paired evaluation, источники и hash находятся в
 `REPRODUCIBILITY.md`. arXiv source лежит в `paper/a2cr-dehaze`, готовый локально проверенный PDF -
-в `output/pdf/a2cr-dehaze-preprint.pdf`.
+в `output/pdf/a2cr-c3r-preprint.pdf`.
 
 ## Что дальше
 
@@ -278,4 +278,3 @@ blind external dataset/evaluator, полный внешний BCCR baseline и G
 - L. Condat, [Primal-dual splitting](https://lcondat.github.io/publis/Condat-optim-JOTA-2013.pdf).
 - [DIODE dataset](https://diode-dataset.org/).
 - Полный обзор ближайших работ: `docs/research/literature-review-2026-07.md`.
-
