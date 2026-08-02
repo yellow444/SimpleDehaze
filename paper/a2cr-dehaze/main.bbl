@@ -1,4 +1,4 @@
-\begin{thebibliography}{24}
+\begin{thebibliography}{21}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -82,25 +82,6 @@ Yunwei Lan, Zhigao Cui, Xin Luo, Chang Liu, Nian Wang, Menglin Zhang, Yanzhao
 \newblock When schrodinger bridge meets real-world image dehazing with unpaired
   training.
 \newblock In \emph{ICCV}, pages 8756--8765, 2025.
-
-\bibitem[Tran and Park(2024)]{tran2024rsvt}
-Le-Anh Tran and Dong-Chul Park.
-\newblock Haze removal via regional saturation-value translation and soft
-  segmentation.
-\newblock \emph{arXiv preprint arXiv:2403.12054}, 2024.
-
-\bibitem[Yan et~al.(2025)Yan, Feng, Zhang, Pang, Shi, Wu, Dong, Sun, and
-  Zhang]{yan2025hvi}
-Qingsen Yan, Yixu Feng, Cheng Zhang, Guansong Pang, Kangbiao Shi, Peng Wu, Wei
-  Dong, Jinqiu Sun, and Yanning Zhang.
-\newblock Hvi: A new color space for low-light image enhancement.
-\newblock In \emph{CVPR}, pages 5678--5687, 2025.
-
-\bibitem[Lyu et~al.(2026)Lyu, Ju, and Ma]{lyu2026cimd}
-Tianyi Lyu, Mingye Ju, and Kai-Kuang Ma.
-\newblock Disentanglement-wise image dehazing through cross-domain manifold
-  consensus.
-\newblock In \emph{CVPR}, pages 22733--22743, 2026.
 
 \bibitem[Condat(2013)]{condat2013}
 Laurent Condat.

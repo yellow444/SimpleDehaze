@@ -366,7 +366,7 @@ pwsh paper/a2cr-dehaze/build.ps1
 
 LaTeX source: `paper/a2cr-dehaze/`. Проверенный PDF:
 `output/pdf/a2cr-recovery-preprint.pdf`. Habr draft:
-`SimpleDeHaze/docs/articles/habr-a2cr-car-hsv.md`. Literature search protocol:
+`SimpleDeHaze/docs/articles/habr-a2cr.md`. Literature search protocol:
 `SimpleDeHaze/docs/research/literature-review-2026-07.md`.
 
 ## Известные источники расхождений

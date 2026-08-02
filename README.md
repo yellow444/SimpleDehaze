@@ -23,7 +23,7 @@ Validation-selected UTAW проверен на 91 test-паре O-/I-/Dense-/NH-
 
 Публикационные материалы: [arXiv source](paper/a2cr-dehaze/README.md),
 [проверенный PDF](output/pdf/a2cr-recovery-preprint.pdf),
-[новая статья для Habr](SimpleDeHaze/docs/articles/habr-a2cr-car-hsv.md),
+[новая статья для Habr](SimpleDeHaze/docs/articles/habr-a2cr.md),
 [CAR и сцена №08](SimpleDeHaze/docs/methods/car-dehaze.md).
 
 Публикационное решение после NEW3: пока сохраняется одна основная статья A²CR. HCV добавляется

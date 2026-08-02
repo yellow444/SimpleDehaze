@@ -19,7 +19,7 @@
 | [research/hcv-a2cr-utaw-study-2026-08.md](research/hcv-a2cr-utaw-study-2026-08.md) | **NEW3 audit**: HCV отрицательные результаты, UTAW validation/frozen test четырёх наборов, AutoTuner, GPU и решение по статьям. |
 | [research/literature-review-2026-07.md](research/literature-review-2026-07.md) | Проверка ближайших работ и безопасная формулировка новизны A²CR/CAR. |
 | [methods/car-dehaze.md](methods/car-dehaze.md) | CAR-Dehaze, формулы chromatic anchor, сцена №08 и аудит автоподбора. |
-| [articles/habr-a2cr-car-hsv.md](articles/habr-a2cr-car-hsv.md) | Новая Habr-статья: HSV/CAP, A²CR, CAR, автоподбор, datasets и честные отрицательные результаты. |
+| [articles/habr-a2cr.md](articles/habr-a2cr.md) | Сфокусированная Habr-статья: A²CR, exact RGB feasibility, controlled/real-paired evaluation, CUDA scope и ограничения. |
 | [methods/README.md](methods/README.md) | **Альтернативная математика и DCP-like кандидаты**: RFEP-DCP, BRACE-DCP, PF-SFGF, LAF-TV/WLS, GDR-SP, Matting/Pyramid Laplacian, дробный лапласиан, Beltrami, MST-граф, color-cube, WLS/Domain Transform/Bilateral Solver, local airlight, gradient-domain и fast DCP engine. |
 
 ## Модель дымки

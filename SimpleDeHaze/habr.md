@@ -1,5 +1,5 @@
 > Новая самостоятельная статья про HSV/CAP, A²CR, CAR, проверенный автоподбор и научные
-> эксперименты находится в [docs/articles/habr-a2cr-car-hsv.md](docs/articles/habr-a2cr-car-hsv.md).
+> эксперименты находится в [docs/articles/habr-a2cr.md](docs/articles/habr-a2cr.md).
 
 ### Решение проблемы дымки на изображениях с использованием  .NET: Простой и эффективный подход
 

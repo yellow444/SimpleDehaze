@@ -18,16 +18,14 @@
   pdftitle={Uncertainty-Aware Airlight-Aligned Dual-Gain Recovery with Exact RGB Feasibility for Training-Free Single-Image Dehazing},
   pdfauthor={Maksim Sitnikov},
   pdfsubject={Training-free single-image dehazing},
-  pdfkeywords={image dehazing, uncertainty, RGB feasibility, cylindrical HSV, total variation}
+  pdfkeywords={image dehazing, uncertainty, RGB feasibility, dual-gain recovery, total variation}
 }
 \newcommand{\method}{A$^2$CR}
-\newcommand{\cyl}{C$^3$R-HSV}
-\newcommand{\car}{CAR-Dehaze}
 
 \title{Uncertainty-Aware Airlight-Aligned Dual-Gain Recovery\\
 with Exact RGB Feasibility for Training-Free Single-Image Dehazing}
-\author{Maksim Sitnikov}
-\date{Preprint draft, August 2026}
+\author{Maksim Sitnikov\\\small Independent Researcher}
+\date{August 2026}
 
 \begin{document}
 \maketitle
@@ -40,18 +38,14 @@ and perpendicular to the airlight vector. Two gains are obtained from analytic q
 containing transmission, airlight, and noise uncertainty. Each gain pair is constrained by the
 exact convex polygon induced by the six RGB-cube inequalities and gain bounds. An edge-aware
 joint total-variation problem is solved with a primal-dual algorithm and exact polygon projection.
-We additionally study \cyl, a complementary recovery in continuous
-$(V,SV\cos H,SV\sin H)$ coordinates with three gains and a non-empty second-order-cone corridor.
 On a controlled DIODE RGB-D evaluation comprising 500 frames and 22,500 reproducible haze
 recipes, the full variant improves over scalar inversion by $2.951$ dB PSNR (95\% bootstrap CI
 $[2.900,3.001]$), $0.191$ SSIM $[0.187,0.196]$, and $-0.978$ CIEDE2000
 $[-1.074,-0.883]$, while eliminating post-recovery RGB violations. Results on four real paired
 datasets are mixed and were not blind: the method is strongest on Dense-Haze but does not
-dominate RFEP, DCP, and Haze-Lines elsewhere. A frozen O-HAZE pilot further shows that cylindrical
-feasibility eliminates clipping but currently under-recovers compared with the RGB method; its
-uncertainty penalties are not supported by that pilot. We therefore claim an interpretable
-constrained-recovery study with an explicit negative branch, not state-of-the-art dehazing. Code,
-tests, manifests, and statistical artifacts accompany the paper.
+dominate RFEP, DCP, and Haze-Lines elsewhere. We therefore claim an interpretable constrained
+recovery study, not state-of-the-art dehazing. Code, 64 executable numerical and regression tests,
+manifests, and statistical artifacts accompany the paper.
 \end{abstract}
 
 \section{Introduction}
@@ -79,14 +73,9 @@ Our contributions are:
         clipping;
   \item a joint edge-aware TV formulation solved by primal-dual splitting with exact polygon
         projection;
-  \item a complementary circular-HSV recovery and guaranteed non-empty saturation/value cone,
-        evaluated as a negative ablation rather than presented as an additional winner;
   \item controlled and real-paired evaluations that report uncertainty, runtime, negative results,
         and the non-blind status of development datasets.
 \end{itemize}
-
-We also report \car, a separate case study for a weak red wall in O-HAZE scene 08. It motivates
-local color objectives but is not used as evidence of generalization.
 
 \section{Related Work}
 \paragraph{Classical priors.}
@@ -107,21 +96,13 @@ but neither formulates two airlight-aligned recovery gains with an exact RGB-fea
 Semi-UFormer learns pixel uncertainty in a teacher-student model \cite{tong2022semi}, while BPUL
 uses learned perturbation-induced uncertainty and degradation consistency \cite{wei2026bpul}.
 Recent methods emphasize domain adaptation, diffusion, or unpaired transport
-\cite{ma2025coa,wang2025hazing,lan2025dehazesb}. Our goal differs: no training, deterministic CPU
-execution, and an uncertainty model exposed in equations and diagnostic maps.
+\cite{ma2025coa,wang2025hazing,lan2025dehazesb}. Our goal differs: no training, a deterministic
+recovery operator, and an uncertainty model exposed in equations and diagnostic maps.
 
-\paragraph{Circular HSV representations.}
-RSVT translates points in the saturation-value plane while largely preserving hue
-\cite{tran2024rsvt}. HVI polarizes hue and saturation to remove the red seam and suppress unstable
-dark colors for low-light enhancement \cite{yan2025hvi}. CIM-D uses a Cartesian sine/cosine HSV
-embedding and a physics-guided HSV decomposition network for dehazing \cite{lyu2026cimd}.
-Consequently, circular HSV embedding itself is not our novelty claim. We study whether analytic
-uncertainty gains and an explicit feasible cone add value in a deterministic, training-free
-recovery; the initial experiment below is deliberately negative.
-
-A targeted search of arXiv, CVF Open Access, and author publication pages through 30 July 2026
-found no direct analogue combining all five elements above. This is a bounded literature-search
-statement, not proof of worldwide priority.
+A targeted search of arXiv, CVF Open Access, and author publication pages through 1 August 2026
+found no direct analogue combining airlight-aligned dual gains, analytic uncertainty risk, exact
+RGB-feasible projection, and joint TV. This is a bounded literature-search statement, not proof
+of worldwide priority.
 
 \section{Method}
 All physical operations use linear RGB. The final result alone is encoded to sRGB.
@@ -188,31 +169,13 @@ projection, and feasibility through the exact $K_x$ projection. Step sizes use a
 Lipschitz bound and $\|\nabla\|^2\le8$. The best feasible iterate by the original objective is
 returned. A numerical unit test verifies objective decrease and feasibility at every pixel.
 
-\subsection{Complementary cylindrical recovery}
-To test whether the same risk-and-feasibility principle transfers to a color-oriented geometry,
-\cyl maps linear-RGB-derived HSV to
-\begin{equation}
- z=(V,c_x,c_y),\qquad (c_x,c_y)=SV(\cos H,\sin H).
-\end{equation}
-This removes the $0/360^\circ$ seam and collapses hue as $SV\rightarrow0$. Relative to the
-airlight point, chroma is decomposed into radial and tangential components, producing three risk
-gains $g_V,g_r,g_\tau$ using Eq.~\eqref{eq:gain}. CAP remains evaluated in its calibrated sRGB/HSV
-space, whereas DCP, airlight, and recovery use linear radiance. CAP/DCP disagreement is measured
-as the equal-prior optical-depth variance; it is kept independent of the mean-fusion weight so
-that an endpoint weight cannot erase uncertainty.
-
-The candidate is restricted to
-\begin{equation}
- K_x=\{(V,c):0\le V\le1,\ \|c\|_2\le S_{\max,x}V\}.
- \label{eq:hsvcone}
-\end{equation}
-Because $S_{\max,x}\ge S_{\mathrm{input},x}$, the input is always in $K_x$. We find the largest
-$\alpha\in[0,1]$ for which the segment from input to candidate remains in the cone, then apply a
-circular hue trust region without changing chroma magnitude. This guarantees representable HSV
-output, but it is not an exact reparameterization of Eq.~\eqref{eq:asm}: HSV is nonlinear and
-the three scalar gains are an approximate color recovery except in restricted cases such as
-neutral airlight within a fixed hue sector. A randomized 20,000-case test verifies cone feasibility
-and segment preservation.
+\subsection{Implementation and CUDA scope}
+The reference implementation uses single-precision matrices for dense image operations and
+double precision for scalar risk and projection calculations. A manually selected hybrid CUDA
+backend moves the two full-resolution local-energy box filters to the GPU. The analytic risks,
+exact polygon projector, and optional joint-TV iterations remain on the CPU. This preserves the
+same objective and boundary convention; an executable regression compares final CPU and CUDA
+outputs. We report this as an implementation path, not as a new algorithm or an end-to-end speedup.
 
 \section{Experimental Protocol}
 \paragraph{Controlled RGB-D synthesis.}
@@ -239,13 +202,6 @@ paired bootstrap by image identifier.
 We use fixed test splits from I-HAZE \cite{ancuti2018ihaze}, O-HAZE \cite{ancuti2018ohaze},
 Dense-Haze \cite{ancuti2019dense}, and NH-HAZE \cite{ancuti2020nh}. These datasets were inspected
 during development; their results must not be called blind tests.
-
-\paragraph{Cylindrical pilot protocol.}
-We use the fixed odd/even O-HAZE validation/test split at maximum dimension 192. Five C$^3$R
-configurations are compared on 23 validation images. One configuration is selected by aggregate
-PSNR/SSIM/CIEDE2000 and evaluated once on the 22 test images. A$^2$CR, HSV$^2$CR, and default
-C$^3$R use fixed defaults on the same test split. This small non-blind pilot is diagnostic and is
-not pooled with the native-resolution results in Table~\ref{tab:real}.
 
 \section{Results}
 \subsection{Controlled ablation}
@@ -311,74 +267,30 @@ NH-HAZE & 27 & 13.228 & 0.602 & 20.901 & 0.462\\
 \end{tabular}}
 \end{table}
 
-\subsection{Cylindrical recovery: negative pilot}
-Table~\ref{tab:cyl} reports the O-HAZE pilot. The validation-selected C$^3$R-v2 disables the
-noise, disagreement, and hue-guard penalties; these terms therefore receive no empirical support
-from this dataset. On test, v2 improves over default C$^3$R but A$^2$CR remains better on PSNR in
-20/22 images, SSIM in 21/22, and CIEDE2000 in 16/22. C$^3$R yields zero clipped-value pixels and
-the smallest color expansion, confirming its feasibility/conservatism rather than superior
-dehazing. This result is why we retain C$^3$R as a complementary branch instead of a separate
-paper claim.
-
-\begin{table}[t]
-\centering
-\caption{O-HAZE test pilot at maximum dimension 192. C$^3$R-v2 was selected only on validation.}
-\label{tab:cyl}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{lrrrrr}
-\toprule
-Method & PSNR$\uparrow$ & SSIM$\uparrow$ & DE00$\downarrow$ & Clip \%$\downarrow$ & Color $\times$\\
-\midrule
-A$^2$CR & \textbf{16.90} & \textbf{0.81} & \textbf{14.04} & 8.52 & 1.92\\
-HSV$^2$CR & 16.61 & 0.78 & 14.30 & 0.57 & 1.78\\
-C$^3$R default & 15.08 & 0.64 & 15.48 & \textbf{0.00} & \textbf{1.11}\\
-C$^3$R-v2 frozen & 15.84 & 0.67 & 14.72 & \textbf{0.00} & 1.28\\
-\bottomrule
-\end{tabular}}
-\end{table}
-
-\subsection{CAR scene-08 case study}
-\car estimates depth with CAP in HSV but performs the physical inverse in linear RGB. It anchors
-centered chroma to global airlight, averages chroma at a coarse scale in dense haze, and fuses only
-low-frequency Lab chroma into a stable luminance backbone. In a GT-defined wall ROI, the hazy
-input has mean $a^*=-0.445$ and the reference has $a^*=2.440$. Fixed CAR defaults recover
-$a^*=1.808$, but create visible false-color regions elsewhere. Global reference tuning improves
-full-image PSNR/SSIM/CIEDE2000 from 17.187/0.633/13.019 to 17.416/0.654/12.188, while weakening
-the wall to $a^*=-0.031$ (Fig.~\ref{fig:scene8}). This demonstrates objective conflict, not a
-general CAR advantage.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.98\textwidth]{figures/scene8-car-wall.pdf}
-\caption{O-HAZE scene 08 development case. The default recovers the red-wall sign but is globally
-aggressive; reference-guided global tuning improves whole-image metrics but loses the local cue.}
-\label{fig:scene8}
-\end{figure*}
-
 \section{Limitations and Reproducibility}
 The controlled benchmark depends on a synthetic scattering/noise family even though RGB and depth
 are real. DIODE's 500 selected frames come from only six physical scene groups. The four paired
 dehazing datasets were used during development. B9 is roughly 31 times slower than B8 at
-maximum dimension 96, and the current implementation is CPU-only. B3 isolates a boundary
+maximum dimension 96. The hybrid CUDA path accelerates only local-energy filtering; the exact
+projector and joint-TV solver remain CPU, and no end-to-end GPU speedup is claimed. B3 isolates a boundary
 component and is not a complete reproduction of Meng et al. \cite{meng2013boundary}. No claim of
-state-of-the-art quality or worldwide priority is made. The C$^3$R pilot is low-resolution,
-non-blind, and lacks a controlled oracle-$t/A$ comparison; its HSV risk is an approximation, not
-a second physical inversion theorem.
+state-of-the-art quality or worldwide priority is made.
 
 The repository records source URLs, archive hashes, frame manifests, stable seeds, commands,
-raw CSV files, 10,000-bootstrap outputs, and 50 deterministic unit tests. It also distinguishes
+raw CSV files, 10,000-bootstrap outputs, and 64 executable numerical and regression tests. It also distinguishes
 raw primary metrics from optional aligned diagnostic metrics. Dataset licenses remain with their
 authors; generated haze recipes are streamed and not redistributed.
+Code and reproducibility artifacts are available at
+\url{https://github.com/yellow444/SimpleDehaze}.
 
 \section{Conclusion}
 Airlight-aligned dual gains expose a useful degree of freedom hidden by scalar inverse scattering.
 Analytic uncertainty risk, an exact RGB-feasible polygon, and joint TV produce strong controlled
-improvements in structure, noise, and feasibility. The cylindrical companion shows that feasibility
-can transfer to a circular color representation, but also that a plausible geometry need not improve
-dehazing: its uncertainty terms hurt the current O-HAZE pilot. Mixed real-paired results, this
-negative branch, and the CAR case study prevent a universal color or perceptual claim. The next
-decisive experiment is a pre-registered blind external evaluation, an oracle-$t/A$ RGB-versus-HSV
-ablation, and comparison with complete external classical baselines.
+improvements in structure, noise, and feasibility. Mixed real-paired results prevent a universal
+color or perceptual claim. The next decisive experiment is a pre-registered blind external
+evaluation, an oracle-$t/A$ recovery ablation, and comparison with complete external classical
+baselines. The current hybrid CUDA implementation is useful for engineering evaluation but does
+not alter the mathematical contribution.
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}
