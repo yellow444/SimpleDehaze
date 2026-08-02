@@ -11,7 +11,7 @@ namespace SimpleDeHaze.Methods
     {
         private static readonly float[] B3 = { 1f / 16, 4f / 16, 6f / 16, 4f / 16, 1f / 16 };
 
-        public static bool IsAvailable => CudaInvoke.HasCuda && CudaInvoke.GetCudaEnabledDeviceCount() > 0;
+        public static bool IsAvailable => CudaBackend.IsAvailable;
 
         public static Mat TransmissionAtrousHsv(Mat bgr01, Mat tMap, Mat sigmaDepth, int levels,
             double gFine, double gMid, double gCoarse, double tLo, double tHi,

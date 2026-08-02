@@ -210,12 +210,14 @@ namespace SimpleDeHaze.Gui
                 _mValues[d.Key] = d.Default; _mDefs[d.Key] = d;
                 var lbl = new Label { AutoSize = true, Margin = new Padding(0, 2, 0, 0), ForeColor = Color.FromArgb(60, 60, 60) };
                 var bar = new TrackBar { Width = 286, Minimum = 0, Maximum = 1000, TickStyle = TickStyle.None, Height = 28 };
-                bar.Enabled = d.Max > d.Min;
+                bar.Enabled = d.IsEnabled && d.Max > d.Min;
                 void Upd()
                 {
                     double v = MethodPosToVal(d, bar.Value);
                     _mValues[d.Key] = v;
-                    lbl.Text = $"{d.Label} = {(d.IsInt ? v.ToString("0") : v.ToString("0.#####"))}";
+                    string shown = d.Key == CudaBackend.ParameterKey ? (v >= 0.5 ? "CUDA" : "CPU")
+                        : d.IsInt ? v.ToString("0") : v.ToString("0.#####");
+                    lbl.Text = $"{d.Label} = {shown}";
                 }
                 bar.Value = MethodValToPos(d, d.Default);
                 bar.Scroll += (_, _) => { Upd(); if (!_suppress) Recompute(); };

@@ -358,13 +358,15 @@ namespace SimpleDeHaze.Gui
                 var box = new Panel { Width = 310, Height = 48, Margin = new Padding(4, 4, 4, 0) };
                 var label = new Label { Dock = DockStyle.Top, Height = 18, AutoEllipsis = true };
                 var bar = new TrackBar { Dock = DockStyle.Top, Minimum = 0, Maximum = 1000, TickStyle = TickStyle.None, Height = 28 };
-                bar.Enabled = d.Max > d.Min;
+                bar.Enabled = d.IsEnabled && d.Max > d.Min;
                 void Update()
                 {
                     double v = PosToValue(d, bar.Value);
                     _values[d.Key] = v;
                     store[d.Key] = v;     // запомнить позицию для этого метода
-                    label.Text = $"{d.Label} = {(d.IsInt ? v.ToString("0") : v.ToString("0.#####"))}"
+                    string shown = d.Key == CudaBackend.ParameterKey ? (v >= 0.5 ? "CUDA" : "CPU")
+                        : d.IsInt ? v.ToString("0") : v.ToString("0.#####");
+                    label.Text = $"{d.Label} = {shown}"
                         + (d.Search ? "   [авто]" : d.Tunable ? "   [подбор]" : "   [режим]");
                 }
                 bar.Value = ValueToPos(d, init);
@@ -618,7 +620,14 @@ namespace SimpleDeHaze.Gui
             foreach (var m in methods)
             {
                 var def = m.Parameters.ToDictionary(x => x.Key, x => x.Default);
-                rows.Add(Bench(m, img, def, gt, "умолч."));
+                bool hasCuda = m.Parameters.Any(parameter =>
+                    parameter.Key == CudaBackend.ParameterKey && parameter.IsEnabled);
+                rows.Add(Bench(m, img, def, gt, hasCuda ? "CPU" : "умолч."));
+                if (hasCuda)
+                {
+                    var cuda = new Dictionary<string, double>(def) { [CudaBackend.ParameterKey] = 1 };
+                    rows.Add(Bench(m, img, cuda, gt, "CUDA"));
+                }
                 if (m.Parameters.Any(p => p.Search))
                 {
                     Dictionary<string, double> tuned;

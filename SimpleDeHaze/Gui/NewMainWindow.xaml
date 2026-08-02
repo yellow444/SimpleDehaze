@@ -114,7 +114,7 @@
 
         <!-- строка параметра: имя, бейдж, число, ползунок, подписи по краям, подсказка -->
         <DataTemplate x:Key="ParamTemplate">
-            <StackPanel Margin="0,0,0,14" ToolTip="{Binding Hint}">
+            <StackPanel Margin="0,0,0,14" ToolTip="{Binding Hint}" IsEnabled="{Binding IsEnabled}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -129,8 +129,14 @@
                         <TextBlock Text="{Binding Display}" FontFamily="Consolas" FontSize="12" TextAlignment="Right" Foreground="#F2F3F4"/>
                     </Border>
                 </Grid>
-                <Slider Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value, Mode=TwoWay}"
-                        SmallChange="{Binding Step}" LargeChange="{Binding Step}" Margin="0,2,0,0"/>
+                <Grid Margin="0,2,0,0">
+                    <Slider Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value, Mode=TwoWay}"
+                            SmallChange="{Binding Step}" LargeChange="{Binding Step}"
+                            Visibility="{Binding IsCudaMode, Converter={StaticResource BoolToVisInverse}}"/>
+                    <ToggleButton Content="{Binding Display}" IsChecked="{Binding CudaSelected, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                  Visibility="{Binding IsCudaMode, Converter={StaticResource BoolToVis}}"/>
+                </Grid>
                 <Grid>
                     <TextBlock Style="{StaticResource Mono}" FontSize="11" HorizontalAlignment="Left">
                         <Run Text="←"/><Run Text=" "/><Run Text="{Binding Low, Mode=OneWay}"/>
@@ -504,6 +510,12 @@
                             </DockPanel>
 
                             <ItemsControl ItemsSource="{Binding PrimaryParams}" ItemTemplate="{StaticResource ParamTemplate}"/>
+
+                            <StackPanel Margin="0,6,0,8"
+                                        Visibility="{Binding HasModeParams, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="ПОСТОЯННЫЕ РЕЖИМЫ" Style="{StaticResource SectionCaption}" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding ModeParams}" ItemTemplate="{StaticResource ParamTemplate}"/>
+                            </StackPanel>
 
                             <Expander Foreground="#C9CDD0" Margin="0,4,0,0">
                                 <Expander.Header>

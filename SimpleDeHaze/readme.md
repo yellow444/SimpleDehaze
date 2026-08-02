@@ -2,7 +2,7 @@
 
 Экспериментальный стенд классического, non-ML удаления дымки на **.NET 8** через **Emgu.CV**.
 В проекте есть legacy DCP-реализации для **CPU** (`DeHazeCPU`) и **GPU/CUDA** (`DeHazeGPU`),
-а также модульный `Methods/` framework из 59 методов: DCP/CAP/RFEP-DCP/BRACE/PF-SFGF/LAF/GDR-SP,
+а также модульный `Methods/` framework из 55 методов: DCP/CAP/RFEP-DCP/BRACE/PF-SFGF/LAF/GDR-SP,
 A²CR, exact HCV-A²CR/fusion, Transmission-aware Laplacian/Edge/UTAW CPU+CUDA и enhancement-baselines.
 
 **Документация по алгоритму:** [docs/README.md](docs/README.md)

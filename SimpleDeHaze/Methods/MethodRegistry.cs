@@ -17,7 +17,6 @@ namespace SimpleDeHaze.Methods
             new HsvA2crMethod(),
             new HsvC3rMethod(),
             new DcpCpuMethod(),
-            new DcpGpuMethod(),
             new HsvCapMethod(),
             new CapLocalMethod(),
             new ChromaticAnchorMethod(),
@@ -26,10 +25,8 @@ namespace SimpleDeHaze.Methods
             // DCP с разными уточнителями карты t
             new FractionalMethod(),
             new BeltramiMethod(),
-            new BeltramiGpuMethod(),
             new MstMethod(),
             new MattingMethod(),
-            new MattingGpuMethod(),
             new MultiScaleDcpMethod(),
             new PfSfgfMethod(),
             new DualChannelMethod(),
@@ -68,7 +65,6 @@ namespace SimpleDeHaze.Methods
             new TransScaleLaplacianMethod(),
             new TransmissionAwareHsvEdgeMethod(),
             new TransmissionAwareHsvUtawMethod(),
-            new TransmissionAwareHsvUtawGpuMethod(),
             new FractalHsvMethod(),
             new ChainMethod(),
             // enhancement-методы (не физическая модель дымки)
@@ -87,7 +83,6 @@ namespace SimpleDeHaze.Methods
             "HSV + многомасштабная шероховатость (эксперимент)",
             "Transmission-aware Laplacian (эксперимент)",
             "Transmission-aware HSV UTAW (эксперимент)",
-            "Transmission-aware HSV UTAW (GPU CUDA, эксперимент)",
             "Color Attenuation+ (адаптивная глубина, баланс белого)",
             "Color Attenuation Prior (HSV)",                        // лёгкий, хорошо держит контуры
             "Локальная дымка - баланс (цвет + объекты)",            // характер по умолчанию: цвет за дымкой + читаемость

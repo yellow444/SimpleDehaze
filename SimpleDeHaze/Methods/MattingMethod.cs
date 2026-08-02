@@ -14,7 +14,8 @@ namespace SimpleDeHaze.Methods
             "где веса w малы на яркостных границах кадра. Решается матрично-свободно (взвешенный Якоби),\n" +
             "полное разрешение, память O(N) - практичная альтернатива разреженным матрицам NxN.\n\n" +
             "Полное разрешение, итеративный решатель (на больших кадрах медленнее).\n" +
-            "Параметры: λ - гладкость; iters - итераций решателя; ω, patch - DCP.";
+            "Параметры: λ - гладкость; iters - итераций решателя; ω, patch - DCP.\n" +
+            "Постоянный параметр «Вычисление» вручную выбирает CPU или CUDA pipeline.";
 
         public IReadOnlyList<ParamDef> Parameters { get; } = new[]
         {
@@ -23,10 +24,19 @@ namespace SimpleDeHaze.Methods
             new ParamDef("min",   "t_min - нижний порог t",   0.01, 0.5, 0.1),
             new ParamDef("lambda","λ - гладкость",            1,   300,  40, log: true, search: true),
             new ParamDef("iters", "Итераций решателя",        5,   80,   30, 1, isInt: true),
+            CudaBackend.ModeParameter,
         };
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)
-            => DehazeCore.Run(input, p["omega"], (int)p["patch"], p["min"],
-                              (i, t) => Refiners.Wls(i, t, p["lambda"], (int)p["iters"]));
+        {
+            if (CudaBackend.IsRequested(p))
+            {
+                CudaBackend.RequireAvailable();
+                return GpuCore.Run(input, p["omega"], (int)p["patch"], p["min"],
+                    (gi, gt) => GpuRefiners.WlsCore(gi, gt, p["lambda"], (int)p["iters"]));
+            }
+            return DehazeCore.Run(input, p["omega"], (int)p["patch"], p["min"],
+                (i, t) => Refiners.Wls(i, t, p["lambda"], (int)p["iters"]));
+        }
     }
 }

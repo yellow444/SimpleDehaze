@@ -1,16 +1,16 @@
 # Transmission-aware multiscale: Laplacian, Edge и UTAW
 
-Статус: реализованное экспериментальное семейство. В GUI сохранены отдельными методами:
+Статус: реализованное экспериментальное семейство. В GUI сохранены отдельными алгоритмами:
 
 - старый [`TransScaleLaplacianMethod.cs`](../../Methods/TransScaleLaplacianMethod.cs);
 - HSV Edge абляция [`TransmissionAwareHsvEdgeMethod.cs`](../../Methods/TransmissionAwareHsvEdgeMethod.cs);
-- validation-selected CPU UTAW
-  [`TransmissionAwareHsvUtawMethod.cs`](../../Methods/TransmissionAwareHsvUtawMethod.cs);
-- математически эквивалентный hybrid CUDA UTAW
-  [`TransmissionAwareHsvUtawGpuMethod.cs`](../../Methods/TransmissionAwareHsvUtawGpuMethod.cs).
+- validation-selected UTAW [`TransmissionAwareHsvUtawMethod.cs`](../../Methods/TransmissionAwareHsvUtawMethod.cs),
+  где постоянный параметр `cuda=0/1` вручную переключает CPU и математически эквивалентный
+  hybrid CUDA stage.
 
-В curated-набор входят старый Laplacian и CPU UTAW. Edge сохранён для сравнения, GPU — как
-инженерный prototype. Это не означает универсального превосходства рекомендованных методов.
+В curated-набор входят старый Laplacian и UTAW. Edge сохранён для сравнения, CUDA backend — как
+инженерный prototype внутри UTAW, а не отдельный метод. Это не означает универсального
+превосходства рекомендованных методов.
 
 ## Общая физическая часть
 

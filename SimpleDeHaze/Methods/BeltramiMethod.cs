@@ -14,7 +14,8 @@ namespace SimpleDeHaze.Methods
             "    ∂t/∂τ = c(|∇I|)*Δt,   c = exp(-|∇I|^2/κ^2)\n" +
             "Диффузия сильна на однородных областях и тормозится на цветовых границах ->\n" +
             "края сохраняются, цвет/небо стабильнее. Итеративно (N шагов).\n\n" +
-            "Параметры: iters - число шагов; κ - порог края; ω, patch - DCP.";
+            "Параметры: iters - число шагов; κ - порог края; ω, patch - DCP.\n" +
+            "Постоянный параметр «Вычисление» вручную выбирает CPU или CUDA pipeline.";
 
         public IReadOnlyList<ParamDef> Parameters { get; } = new[]
         {
@@ -23,10 +24,19 @@ namespace SimpleDeHaze.Methods
             new ParamDef("min",   "t_min - нижний порог t",   0.01, 0.5, 0.1),
             new ParamDef("iters", "Итераций диффузии",        5,   60,   20, 1, isInt: true, search: true),
             new ParamDef("kappa", "κ - порог края",           0.01, 0.5, 0.1, log: true),
+            CudaBackend.ModeParameter,
         };
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)
-            => DehazeCore.Run(input, p["omega"], (int)p["patch"], p["min"],
-                              (i, t) => Refiners.Beltrami(i, t, (int)p["iters"], p["kappa"]));
+        {
+            if (CudaBackend.IsRequested(p))
+            {
+                CudaBackend.RequireAvailable();
+                return GpuCore.Run(input, p["omega"], (int)p["patch"], p["min"],
+                    (gi, gt) => GpuRefiners.BeltramiCore(gi, gt, (int)p["iters"], p["kappa"]));
+            }
+            return DehazeCore.Run(input, p["omega"], (int)p["patch"], p["min"],
+                (i, t) => Refiners.Beltrami(i, t, (int)p["iters"], p["kappa"]));
+        }
     }
 }

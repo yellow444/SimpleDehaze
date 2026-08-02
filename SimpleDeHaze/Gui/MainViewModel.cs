@@ -48,8 +48,12 @@ namespace SimpleDeHaze.Gui.Modern
             Name = (MethodRegistry.Recommended.Contains(m.Name) ? "★ " : "") + m.Name;
             Recommended = MethodRegistry.Recommended.Contains(m.Name);
             IsGpu = m.Name.Contains("GPU", StringComparison.OrdinalIgnoreCase)
-                 || m.Name.Contains("CUDA", StringComparison.OrdinalIgnoreCase);
-            IsCudaAvailable = IsGpu ? TransmissionAwareHsvUtawGpuMethod.IsCudaAvailable : null;
+                 || m.Name.Contains("CUDA", StringComparison.OrdinalIgnoreCase)
+                 || m.Parameters.Any(parameter => parameter.Key == CudaBackend.ParameterKey);
+            IsCudaAvailable = IsGpu
+                ? m.Parameters.FirstOrDefault(parameter => parameter.Key == CudaBackend.ParameterKey)?.IsEnabled
+                    ?? CudaBackend.IsAvailable
+                : null;
             IsSkyAware = m.Parameters.Any(p => p.Key is "tsky" or "tauV" or "tauS")
                       || m.Name.Contains("sky", StringComparison.OrdinalIgnoreCase)
                       || m.Name.Contains("небо", StringComparison.OrdinalIgnoreCase);
@@ -81,7 +85,9 @@ namespace SimpleDeHaze.Gui.Modern
         public string Low { get; }
         public string High { get; }
         public string Hint { get; }
-        public string Badge => Def.Search ? "авто" : Def.Tunable ? "подбор" : "режим";
+        public string Badge => !Def.IsEnabled ? "недоступно" : Def.Search ? "авто" : Def.Tunable ? "подбор" : "режим";
+        public bool IsEnabled => Def.IsEnabled;
+        public bool IsCudaMode => Def.Key == CudaBackend.ParameterKey;
         public bool IsPrimary { get; }
 
         public double Min => Def.Min;
@@ -95,11 +101,19 @@ namespace SimpleDeHaze.Gui.Modern
             set
             {
                 double v = Def.Coerce(value);
-                if (Set(ref _value, v)) { Raise(nameof(Display)); _changed(); }
+                if (Set(ref _value, v)) { Raise(nameof(Display)); Raise(nameof(CudaSelected)); _changed(); }
             }
         }
 
-        public string Display => Def.IsInt ? _value.ToString("0") : _value.ToString("0.####");
+        public bool CudaSelected
+        {
+            get => _value >= 0.5;
+            set => Value = value ? 1 : 0;
+        }
+
+        public string Display => Def.Key == CudaBackend.ParameterKey
+            ? _value >= 0.5 ? "CUDA" : "CPU"
+            : Def.IsInt ? _value.ToString("0") : _value.ToString("0.####");
 
         public ParamRow(ParamDef d, double value, bool primary, Action changed)
         {
@@ -164,6 +178,7 @@ namespace SimpleDeHaze.Gui.Modern
         public ObservableCollection<MethodItem> AllMethods { get; } = new();
         public ObservableCollection<MethodGroup> Groups { get; } = new();
         public ObservableCollection<ParamRow> PrimaryParams { get; } = new();
+        public ObservableCollection<ParamRow> ModeParams { get; } = new();
         public ObservableCollection<ParamRow> AdvancedParams { get; } = new();
         public ObservableCollection<MetricRow> Metrics { get; } = new();
         public ObservableCollection<BenchRow> Bench { get; } = new();
@@ -250,7 +265,7 @@ namespace SimpleDeHaze.Gui.Modern
         // --- параметры ---
         private void RebuildParams()
         {
-            PrimaryParams.Clear(); AdvancedParams.Clear();
+            PrimaryParams.Clear(); ModeParams.Clear(); AdvancedParams.Clear();
             var m = Selected.Method;
             if (!_memory.TryGetValue(m.Name, out var store)) { store = new(); _memory[m.Name] = store; }
 
@@ -264,24 +279,30 @@ namespace SimpleDeHaze.Gui.Modern
                 double v = store.TryGetValue(d.Key, out var sv) ? Math.Clamp(sv, d.Min, d.Max) : d.Default;
                 store[d.Key] = v;
                 var row = new ParamRow(d, v, primaryKeys.Contains(d.Key), OnParamChanged);
-                (row.IsPrimary ? PrimaryParams : AdvancedParams).Add(row);
+                if (!d.Tunable) ModeParams.Add(row);
+                else (row.IsPrimary ? PrimaryParams : AdvancedParams).Add(row);
             }
             Raise(nameof(AdvancedCount));
+            Raise(nameof(HasModeParams));
         }
 
         public string AdvancedCount => AdvancedParams.Count.ToString();
+        public bool HasModeParams => ModeParams.Count > 0;
+
+        private IEnumerable<ParamRow> AllParamRows()
+            => PrimaryParams.Concat(ModeParams).Concat(AdvancedParams);
 
         private IReadOnlyDictionary<string, double> CurrentValues()
         {
             var d = new Dictionary<string, double>();
-            foreach (var r in PrimaryParams.Concat(AdvancedParams)) d[r.Def.Key] = r.Value;
+            foreach (var r in AllParamRows()) d[r.Def.Key] = r.Value;
             return d;
         }
 
         private void ApplyValues(IReadOnlyDictionary<string, double> vals)
         {
             _suppressLive = true;
-            foreach (var r in PrimaryParams.Concat(AdvancedParams))
+            foreach (var r in AllParamRows())
                 if (vals.TryGetValue(r.Def.Key, out var v)) r.Value = v;
             _suppressLive = false;
             foreach (var kv in vals) _memory[Selected.Method.Name][kv.Key] = kv.Value;
@@ -297,7 +318,7 @@ namespace SimpleDeHaze.Gui.Modern
         private void ApplyPreset(string name)
         {
             double k = name switch { "Мягко" => 0.6, "Сильно" => 1.5, _ => 1.0 };
-            foreach (var r in PrimaryParams.Concat(AdvancedParams))
+            foreach (var r in AllParamRows())
             {
                 if (r.Def.Key is "beta" or "omega" or "p" or "restore" or "clahe")
                     r.Value = Math.Clamp(r.Def.Default * k, r.Def.Min, r.Def.Max);
@@ -392,7 +413,9 @@ namespace SimpleDeHaze.Gui.Modern
                 Selected.Ms = sw.ElapsedMilliseconds;
                 Selected.Score = rep.Score;
                 ShowMetrics(rep, preview: false);
-                JobLabel = $"готово · {method.Name}, {sw.ElapsedMilliseconds} мс";
+                string backend = args.TryGetValue(CudaBackend.ParameterKey, out double cuda) && cuda >= 0.5
+                    ? "CUDA" : method.Parameters.Any(parameter => parameter.Key == CudaBackend.ParameterKey) ? "CPU" : "";
+                JobLabel = $"готово · {method.Name}{(backend.Length > 0 ? " · " + backend : "")}, {sw.ElapsedMilliseconds} мс";
                 JobPercent = 100;
             }
             finally { IsBusy = false; }
@@ -465,38 +488,61 @@ namespace SimpleDeHaze.Gui.Modern
                 if (_gt != null) { gt = new Mat(); CvInvoke.Resize(_gt.Mat, gt, img.Size, 0, 0, Inter.Area); }
                 var list = MethodRegistry.All;
                 double mp = img.Width * img.Height / 1_000_000.0;
+                int totalRuns = list.Sum(method => method.Parameters.Any(parameter =>
+                    parameter.Key == CudaBackend.ParameterKey && parameter.IsEnabled) ? 2 : 1);
+                int completedRuns = 0;
                 for (int i = 0; i < list.Count; i++)
                 {
                     var m = list[i];
                     var def = m.Parameters.ToDictionary(p => p.Key, p => p.Default);
-                    var row = await Task.Run(() =>
+                    bool hasCuda = m.Parameters.Any(parameter =>
+                        parameter.Key == CudaBackend.ParameterKey && parameter.IsEnabled);
+                    var runs = new List<(string Mode, Dictionary<string, double> Parameters)>
                     {
-                        var sw = Stopwatch.StartNew();
-                        try
+                        (hasCuda ? "CPU" : "умолч.", def),
+                    };
+                    if (hasCuda)
+                    {
+                        var cuda = new Dictionary<string, double>(def) { [CudaBackend.ParameterKey] = 1 };
+                        runs.Add(("CUDA", cuda));
+                    }
+
+                    foreach (var run in runs)
+                    {
+                        var row = await Task.Run(() =>
                         {
-                            using var res = m.Process(img, def);
-                            sw.Stop();
-                            var r = Methods.Metrics.Evaluate(res, gt, img.Mat);
-                            return new BenchRow
+                            var sw = Stopwatch.StartNew();
+                            try
                             {
-                                Method = m.Name, Mode = "умолч.", Score = r.Score,
-                                Psnr = r.HasRef ? r.Psnr : null, PsnrAligned = r.HasRef ? r.PsnrAligned : null,
-                                Ssim = r.HasRef ? r.Ssim : null, Ciede = r.HasRef ? r.Ciede2000 : null,
-                                HazePct = r.HazeRemoved * 100, Contrast = r.ContrastGain, ColorX = r.ColorRatio,
-                                NaturalnessDev = r.NaturalnessDev, Ms = sw.ElapsedMilliseconds, MsPerMp = sw.ElapsedMilliseconds / Math.Max(1e-6, mp)
-                            };
-                        }
-                        catch (Exception ex)
+                                using var res = m.Process(img, run.Parameters);
+                                sw.Stop();
+                                var r = Methods.Metrics.Evaluate(res, gt, img.Mat);
+                                return new BenchRow
+                                {
+                                    Method = m.Name, Mode = run.Mode, Score = r.Score,
+                                    Psnr = r.HasRef ? r.Psnr : null, PsnrAligned = r.HasRef ? r.PsnrAligned : null,
+                                    Ssim = r.HasRef ? r.Ssim : null, Ciede = r.HasRef ? r.Ciede2000 : null,
+                                    HazePct = r.HazeRemoved * 100, Contrast = r.ContrastGain, ColorX = r.ColorRatio,
+                                    NaturalnessDev = r.NaturalnessDev, Ms = sw.ElapsedMilliseconds,
+                                    MsPerMp = sw.ElapsedMilliseconds / Math.Max(1e-6, mp)
+                                };
+                            }
+                            catch (Exception ex)
+                            {
+                                sw.Stop();
+                                return new BenchRow { Method = m.Name, Mode = run.Mode, Ms = sw.ElapsedMilliseconds, Error = ex.Message };
+                            }
+                        });
+                        Bench.Add(row);
+                        if (run.Mode != "CUDA")
                         {
-                            sw.Stop();
-                            return new BenchRow { Method = m.Name, Mode = "умолч.", Ms = sw.ElapsedMilliseconds, Error = ex.Message };
+                            var item = AllMethods.First(x => x.Method.Name == m.Name);
+                            item.Ms = row.Ms; item.Score = row.Score;
                         }
-                    });
-                    Bench.Add(row);
-                    var item = AllMethods.First(x => x.Method.Name == m.Name);
-                    item.Ms = row.Ms; item.Score = row.Score;
-                    JobLabel = $"Прогон методов · {i + 1}/{list.Count}";
-                    JobPercent = (i + 1) * 100.0 / list.Count;
+                        completedRuns++;
+                        JobLabel = $"Прогон методов · {completedRuns}/{totalRuns}";
+                        JobPercent = completedRuns * 100.0 / totalRuns;
+                    }
                 }
                 gt?.Dispose();
                 MetricsPanelOpen = true;

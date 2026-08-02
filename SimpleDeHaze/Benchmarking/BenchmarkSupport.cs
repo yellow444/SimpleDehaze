@@ -164,7 +164,6 @@ internal static class BenchmarkProfiles
             case TransScaleLaplacianMethod:
             case TransmissionAwareHsvEdgeMethod:
             case TransmissionAwareHsvUtawMethod:
-            case TransmissionAwareHsvUtawGpuMethod:
                 Set(p, "wb", 0); Set(p, "sat", 0); Set(p, "tone", 0); Set(p, "smooth", 0); SetMax(method, p, "color");
                 return true;
             default:

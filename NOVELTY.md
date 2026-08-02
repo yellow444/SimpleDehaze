@@ -30,15 +30,14 @@
 | CAR chromatic airlight residual | CAP, local airlight field и Color-Constrained Dehazing Model | global chromatic anchor, coarse chroma donor и gamut-confidence fusion | scene-08 ROI, global/ROI objective conflict, autotuner audit | Отдельная проверяемая гипотеза/case study, не общий claim и не blind result |
 | Локальное поле атмосферного света | пространственно-переменный airlight известен | быстрая реализация; в коде WLS, а не TV | — | Инженерная реализация |
 | Спектральная модель `t_c = t^{k_c}` | wavelength-dependent transmission публиковалась | своё — оценка η по декоррелации остаточного каста с глубиной | не реализовано | Направление, не результат |
-| .NET-лаборатория из 59 методов с единым API | аналогов немного | воспроизводимый стенд и контролируемое сравнение | бенчмарк и 64 численных/регрессионных теста | **Самый защищаемый вклад репозитория** |
+| .NET-лаборатория из 55 методов с единым API | аналогов немного | воспроизводимый стенд и контролируемое сравнение; CPU/CUDA — backend одного метода, а не дубли строк | бенчмарк и 64 численных/регрессионных теста | **Самый защищаемый вклад репозитория** |
 
 ## Переименования после аудита
 
 | Было | Стало | Почему |
 |---|---|---|
 | `RFEP-DCP (radiance-feasible)` | `Boundary-Constrained Prior Fusion (быв. RFEP)` | название заявляло новизну границы, которой нет |
-| `Dark Channel Prior (CPU)` | `Legacy поканальный (CPU, не канонический DCP)` | метод считает поканальный минимум и экспоненциальную `t` — это не DCP |
-| `Dark Channel Prior (GPU - CUDA)` | `Legacy поканальный (GPU CUDA)` | то же |
+| `Dark Channel Prior (CPU/GPU)` | `Legacy поканальный (не канонический DCP)` + постоянный переключатель CPU/CUDA | метод считает поканальный минимум и экспоненциальную `t` — это не DCP; backend не является отдельным алгоритмом |
 | `NiqeProxy` / `BrisqueProxy` | `NaturalnessDev` / `ArtifactDev` | это собственные эвристики, а не NIQE и BRISQUE |
 | `FractalRichness` (смысл) | «двухмасштабная шероховатость» | не является оценкой фрактальной размерности |
 

@@ -180,8 +180,26 @@ public sealed class TransmissionAwareTests
     {
         TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware Laplacian (эксперимент)"));
         TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware HSV UTAW (эксперимент)"));
-        TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware HSV UTAW (GPU CUDA, эксперимент)"));
         TestAssert.False(MethodRegistry.Recommended.Contains("Transmission-aware HSV Edge Bands (эксперимент)"));
+        TestAssert.False(MethodRegistry.All.Any(method => method.Name.Contains("GPU", StringComparison.OrdinalIgnoreCase)));
+
+        var cudaMethods = MethodRegistry.All
+            .Where(method => method.Parameters.Any(parameter => parameter.Key == CudaBackend.ParameterKey))
+            .ToArray();
+        TestAssert.Equal(4, cudaMethods.Length);
+        TestAssert.True(cudaMethods.Any(method => method is DcpCpuMethod));
+        TestAssert.True(cudaMethods.Any(method => method is BeltramiMethod));
+        TestAssert.True(cudaMethods.Any(method => method is MattingMethod));
+        TestAssert.True(cudaMethods.Any(method => method is TransmissionAwareHsvUtawMethod));
+        foreach (var method in cudaMethods)
+        {
+            var backend = method.Parameters.Single(parameter => parameter.Key == CudaBackend.ParameterKey);
+            TestAssert.Equal(0.0, backend.Default);
+            TestAssert.True(backend.IsInt);
+            TestAssert.False(backend.Search);
+            TestAssert.False(backend.Tunable);
+            TestAssert.Equal(CudaBackend.IsAvailable, backend.IsEnabled);
+        }
         string c3rName = MethodRegistry.All.Single(method => method is HsvC3rMethod).Name;
         TestAssert.False(MethodRegistry.Recommended.Contains(c3rName));
         string hsvA2crName = MethodRegistry.All.Single(method => method is HsvA2crMethod).Name;

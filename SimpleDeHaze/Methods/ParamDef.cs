@@ -18,9 +18,12 @@ namespace SimpleDeHaze.Methods
         /// переключателей (напр. быстро/HQ, фактор апскейла), которые задаёт пользователь, а не метрика.
         /// </summary>
         public bool Tunable { get; }
+        /// <summary>Доступен ли параметр в текущем окружении (например, CUDA runtime + устройство).</summary>
+        public bool IsEnabled { get; }
 
         public ParamDef(string key, string label, double min, double max, double @default,
-                        double step = 0, bool isInt = false, bool log = false, bool search = false, bool tunable = true)
+                        double step = 0, bool isInt = false, bool log = false, bool search = false,
+                        bool tunable = true, bool isEnabled = true)
         {
             if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Ключ параметра не может быть пустым.", nameof(key));
             if (!double.IsFinite(min)) throw new ArgumentOutOfRangeException(nameof(min), "Минимум должен быть конечным числом.");
@@ -40,6 +43,7 @@ namespace SimpleDeHaze.Methods
             Log = log;
             Search = search;
             Tunable = tunable;
+            IsEnabled = isEnabled;
         }
 
         /// <summary>

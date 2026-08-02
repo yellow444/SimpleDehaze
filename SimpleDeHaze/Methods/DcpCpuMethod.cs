@@ -11,7 +11,7 @@ namespace SimpleDeHaze.Methods
     /// </summary>
     public sealed class DcpCpuMethod : IDeHazeMethod
     {
-        public string Name => "Legacy поканальный (CPU, не канонический DCP)";
+        public string Name => "Legacy поканальный (не канонический DCP)";
 
         public string Description =>
             "Историческая ветка проекта (класс DeHazeCPU) - сохранена для воспроизводимости старых\n" +
@@ -29,7 +29,8 @@ namespace SimpleDeHaze.Methods
             "4. уточнение Guided Filter;\n" +
             "5. J_c = (I_c - A_c)/max(t_c, t_min) + A_c;\n" +
             "6. tone - авто-уровни по L (выключаемая косметика).\n\n" +
-            "Параметры: β - сила; patch - окно; refine/ε - Guided Filter; tone - сила авто-уровней.";
+            "Параметры: β - сила; patch - окно; refine/ε - Guided Filter; tone - сила авто-уровней.\n" +
+            "Постоянный параметр «Вычисление» вручную выбирает CPU или полный CUDA/GpuMat pipeline.";
 
         public IReadOnlyList<ParamDef> Parameters { get; } = new[]
         {
@@ -41,10 +42,21 @@ namespace SimpleDeHaze.Methods
             new ParamDef("refine", "Радиус Guided Filter",      3,    150,  60,  1, isInt: true),
             new ParamDef("eps",    "ε - регуляризация GF",      1e-5, 1e-2, 1e-3, log: true),
             new ParamDef("tone",   "Восстановление тона (контраст)", 0.0, 1.0, 0.6),
+            CudaBackend.ModeParameter,
         };
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)
         {
+            if (CudaBackend.IsRequested(p))
+            {
+                CudaBackend.RequireAvailable();
+                using var gpu = new DeHazeGPU();
+                using var gpuRaw = gpu.RemoveHaze(input.Clone(), debug: false,
+                    beta: (float)p["beta"], patchDarkChannel: (int)p["patch"], decompositionSize: (int)p["decomp"],
+                    min: (float)p["min"], percen: (float)p["percen"], refineSize: (int)p["refine"], eps: p["eps"]);
+                return DehazeCore.RestoreTone(gpuRaw, p["tone"]);
+            }
+
             using var m = new DeHazeCPU();
             // классический per-channel DCP затемняет/площит (контраст < входа) - возвращаем тон авто-уровнями
             using var raw = m.RemoveHaze(input.Clone(), debug: false,

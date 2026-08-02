@@ -46,6 +46,7 @@ namespace SimpleDeHaze.Gui.Modern
             ["iters"]   = new("Итераций сглаживания", "быстрее", "глаже"),
             ["lambda"]  = new("Гладкость карты", "острее", "глаже"),
             ["context"] = new("Подмешать оригинал", "только результат", "ближе к оригиналу"),
+            ["cuda"]    = new("Вычисление", "CPU", "CUDA"),
         };
 
         public static Human? For(string key) => Map.TryGetValue(key, out var h) ? h : null;

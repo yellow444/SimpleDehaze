@@ -15,7 +15,8 @@ namespace SimpleDeHaze.Methods
             "Коэффициент каждой полосы ограничивают local band power, t, noise и optical-depth " +
             "расхождение CAP↔DCP; delta имеет явный amplitude cap против мозаичной фактуры.\n\n" +
             "Stationary wavelets известны. Исследовательская гипотеза — joint reliability/budget, " +
-            "а не замена Laplacian сама по себе.";
+            "а не замена Laplacian сама по себе. Постоянный параметр «Вычисление» вручную выбирает " +
+            "CPU или hybrid CUDA stage без скрытого fallback.";
 
         public IReadOnlyList<ParamDef> Parameters { get; } = BaseMethod.Parameters
             .Where(definition => definition.Key is not "space" and not "basis" and not "wiener" and
@@ -34,14 +35,17 @@ namespace SimpleDeHaze.Methods
                 }, definition.Step, definition.IsInt, definition.Log,
                 definition.Search || definition.Key is "uNoise" or "uUnc" or "uLimit",
                 definition.Tunable || definition.Key is "uNoise" or "uUnc" or "uRadius" or "uLimit"))
+            .Append(CudaBackend.ModeParameter)
             .ToArray();
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> parameters)
         {
+            bool cuda = CudaBackend.IsRequested(parameters);
+            if (cuda) CudaBackend.RequireAvailable();
             var selected = new Dictionary<string, double>(parameters, StringComparer.Ordinal)
             {
                 ["space"] = 1,
-                ["basis"] = 2,
+                ["basis"] = cuda ? 3 : 2,
             };
             return BaseMethod.Process(input, selected);
         }

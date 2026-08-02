@@ -108,8 +108,8 @@ def beltrami_style_refine(t, I, kappa=0.1, dt=0.2, iters=20):
 
 В проекте это уточнитель $t$ над общим DCP-ядром:
 [`BeltramiMethod.cs`](../../Methods/BeltramiMethod.cs) ->
-[`Refiners.Beltrami`](../../Methods/Refiners.cs), а GPU-вариант -
-[`BeltramiGpuMethod.cs`](../../Methods/BeltramiGpuMethod.cs) ->
+[`Refiners.Beltrami`](../../Methods/Refiners.cs), а при постоянном параметре `cuda=1` тот же метод
+переключается на
 [`GpuRefiners.BeltramiCore`](../../Methods/GpuRefiners.cs).
 
 Если делать полный Beltrami-оператор, нужно хранить/считать компоненты метрики $g$ по RGB
