@@ -180,8 +180,8 @@ public sealed class TransmissionAwareTests
     {
         TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware Laplacian (эксперимент)"));
         TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware HSV UTAW (эксперимент)"));
+        TestAssert.True(MethodRegistry.Recommended.Contains("Transmission-aware HSV UTAW (GPU CUDA, эксперимент)"));
         TestAssert.False(MethodRegistry.Recommended.Contains("Transmission-aware HSV Edge Bands (эксперимент)"));
-        TestAssert.False(MethodRegistry.Recommended.Contains("Transmission-aware HSV UTAW (GPU CUDA, эксперимент)"));
         string c3rName = MethodRegistry.All.Single(method => method is HsvC3rMethod).Name;
         TestAssert.False(MethodRegistry.Recommended.Contains(c3rName));
         string hsvA2crName = MethodRegistry.All.Single(method => method is HsvA2crMethod).Name;

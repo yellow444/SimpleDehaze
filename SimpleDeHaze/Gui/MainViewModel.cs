@@ -28,6 +28,7 @@ namespace SimpleDeHaze.Gui.Modern
         public string Family { get; }
         public bool Recommended { get; }
         public bool IsGpu { get; }
+        public bool? IsCudaAvailable { get; }
         public bool IsSkyAware { get; }
 
         private double? _score;
@@ -38,7 +39,7 @@ namespace SimpleDeHaze.Gui.Modern
         public long Ms { get => _ms; set { Set(ref _ms, value); Raise(nameof(Meta)); } }
 
         public string Meta => (_ms > 0 ? _ms + " мс" : "не запускался")
-                            + (IsGpu ? " · GPU" : "")
+                            + (IsGpu ? IsCudaAvailable == true ? " · CUDA готова" : " · CUDA недоступна" : "")
                             + (IsSkyAware ? " · бережёт небо" : "");
 
         public MethodItem(IDeHazeMethod m)
@@ -48,6 +49,7 @@ namespace SimpleDeHaze.Gui.Modern
             Recommended = MethodRegistry.Recommended.Contains(m.Name);
             IsGpu = m.Name.Contains("GPU", StringComparison.OrdinalIgnoreCase)
                  || m.Name.Contains("CUDA", StringComparison.OrdinalIgnoreCase);
+            IsCudaAvailable = IsGpu ? TransmissionAwareHsvUtawGpuMethod.IsCudaAvailable : null;
             IsSkyAware = m.Parameters.Any(p => p.Key is "tsky" or "tauV" or "tauS")
                       || m.Name.Contains("sky", StringComparison.OrdinalIgnoreCase)
                       || m.Name.Contains("небо", StringComparison.OrdinalIgnoreCase);
@@ -320,16 +322,24 @@ namespace SimpleDeHaze.Gui.Modern
             var method = Selected.Method;
             _ = Task.Run(async () =>
             {
-                await Task.Delay(120, token);              // дебаунс перетаскивания
-                if (token.IsCancellationRequested) return;
-                using var preview = Downscale(_input!, 480);
-                using var res = method.Process(preview, args);
-                using var disp = new Mat();
-                res.ConvertTo(disp, DepthType.Cv8U, 255.0);
-                var bmp = Img.ToBitmap(disp);
-                var rep = Methods.Metrics.Evaluate(res, null, preview.Mat);
-                if (token.IsCancellationRequested) return;
-                App.Post(() => { ResultImage = bmp; ShowMetrics(rep, preview: true); });
+                try
+                {
+                    await Task.Delay(120, token);              // дебаунс перетаскивания
+                    if (token.IsCancellationRequested) return;
+                    using var preview = Downscale(_input!, 480);
+                    using var res = method.Process(preview, args);
+                    using var disp = new Mat();
+                    res.ConvertTo(disp, DepthType.Cv8U, 255.0);
+                    var bmp = Img.ToBitmap(disp);
+                    var rep = Methods.Metrics.Evaluate(res, null, preview.Mat);
+                    if (token.IsCancellationRequested) return;
+                    App.Post(() => { ResultImage = bmp; ShowMetrics(rep, preview: true); });
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    App.Post(() => JobLabel = "ошибка · " + ex.Message);
+                }
             }, token);
         }
 

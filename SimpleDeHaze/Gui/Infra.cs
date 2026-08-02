@@ -59,6 +59,12 @@ namespace SimpleDeHaze.Gui.Modern
         {
             _running = true; Refresh();
             try { await _exec(p); }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.Message, "Ошибка выполнения",
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
             finally { _running = false; Refresh(); }
         }
 
