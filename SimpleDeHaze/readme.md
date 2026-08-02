@@ -39,12 +39,17 @@ core-профилем, поэтому косметика не отключает
 
 ## Интерфейс (GUI)
 
-Окно: выбор **метода** (A²CR/HCV dual-gain recovery, Transmission-aware UTAW CPU/GPU,
+Окно: выбор **метода** (A²CR/HCV dual-gain recovery, Transmission-aware Laplacian/UTAW CPU/GPU,
 legacy DCP CPU/GPU, CAP HSV, RFEP-DCP, BRACE-DCP, PF-SFGF, LAF-TV/WLS, GDR-SP,
 Gradient Domain, CLAHE/Retinex и др.), **ползунки параметров** под выбранный метод, кнопка
 **'Вычислить'** (считает в фоне, показывает время), панели **вход | результат** и
 **'Сохранить...'**. Каждый метод сам объявляет свои параметры, поэтому ползунки генерируются
 автоматически.
+
+У семи реально поддерживаемых CUDA-конвейеров backend выбирается постоянным переключателем
+**«Вычисление: CPU/CUDA»** внутри параметров метода: A²CR, HSV²CR, legacy поканальный,
+Beltrami, Matting WLS, Transmission-aware Laplacian и Transmission-aware HSV UTAW. Кнопка
+**GPU** слева только фильтрует этот список и сама backend не переключает.
 
 Benchmark в GUI и `--selftest` считают PSNR/SSIM, совмещённые PSNR/SSIM, CIEDE2000,
 no-reference score, runtime и две явно собственные диагностические эвристики

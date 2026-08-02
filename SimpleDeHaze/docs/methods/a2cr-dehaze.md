@@ -154,12 +154,22 @@ dotnet run --project SimpleDeHaze/SimpleDeHaze.csproj -c Release -- --a2cr-diag 
 Сохраняются result, `t`, `σt²`, `σD`, `g_parallel`, `g_perp`, `α` и JSON с оценками `A`,
 параметрами, долей projected pixels и нарушениями до/после projector.
 
+## CPU/CUDA backend
+
+Постоянный параметр `cuda=0/1` не создаёт второй метод, а выбирает backend того же A²CR.
+В текущем hybrid CUDA-path на GPU выполняются два полноразмерных box-filter локальной энергии
+в airlight-aligned координатах. Формулы risk-aware gains, точная RGB-feasible projection и
+optional joint-TV solver остаются CPU: у них есть последовательные зависимости и перенос требует
+отдельных CUDA-ядер, а не простой замены `Mat` на `GpuMat`. Численный regression сравнивает итог
+CPU↔CUDA и одновременно проверяет нулевую долю RGB-нарушений. Тот же ускоряемый A²CR front-end
+использует HSV²CR, поэтому переключатель доступен и там.
+
 ## Не закрыто
 
 - внешний полнофункциональный BCCR baseline (B3 проверяет только boundary-компонент);
 - официальный CARLA-Haze adapter и действительно слепой внешний real-data benchmark;
 - optical-depth semigroup self-calibration;
-- GPU-реализация.
+- полный GPU joint-TV/projector и end-to-end benchmark (сейчас реализован hybrid CUDA local-energy stage).
 
 Поиск ближайших работ и границы claim зафиксированы в
 `docs/research/literature-review-2026-07.md`. До слепого внешнего теста безопасная формулировка —

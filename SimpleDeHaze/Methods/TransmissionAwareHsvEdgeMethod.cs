@@ -29,7 +29,8 @@ namespace SimpleDeHaze.Methods
 
         public IReadOnlyList<ParamDef> Parameters { get; } = BaseMethod.Parameters
             .Where(definition => definition.Key is not "space" and not "basis" and not "wiener" and
-                not "uNoise" and not "uUnc" and not "uRadius" and not "uLimit")
+                not "uNoise" and not "uUnc" and not "uRadius" and not "uLimit" and
+                not CudaBackend.ParameterKey)
             .Select(definition => new ParamDef(
                 definition.Key,
                 definition.Label,

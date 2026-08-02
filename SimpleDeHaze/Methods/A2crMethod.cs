@@ -24,7 +24,9 @@ namespace SimpleDeHaze.Methods
             "безопасной точки (g∥,g⊥)=(1,1) к предложенным gains лишь до границы RGB-куба.\n" +
             "При tv>0 совместный primal-dual solver оптимизирует оба gain-поля внутри точного\n" +
             "per-pixel RGB-feasible многоугольника, с edge-aware TV и coupling.\n\n" +
-            "Это кандидат на исследовательский метод, не доказанный claim мировой новизны.";
+            "Это кандидат на исследовательский метод, не доказанный claim мировой новизны.\n" +
+            "Постоянный параметр «Вычисление» включает hybrid CUDA для полноразмерных карт локальной " +
+            "энергии; точная feasible-проекция и optional joint-TV остаются CPU.";
 
         public IReadOnlyList<ParamDef> Parameters { get; } = new[]
         {
@@ -50,6 +52,7 @@ namespace SimpleDeHaze.Methods
             new ParamDef("refine",  "Радиус guided refinement t",         3,  120,  40, 1, isInt: true),
             new ParamDef("eps",     "ε guided refinement",             1e-5, 1e-2, 1e-3, log: true),
             new ParamDef("fast",    "Ускорение guided filter",            1,    8,   4, 1, isInt: true, tunable: false),
+            CudaBackend.ModeParameter,
         };
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)
@@ -60,6 +63,8 @@ namespace SimpleDeHaze.Methods
 
         internal static A2crExecution Execute(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)
         {
+            bool cuda = CudaBackend.IsRequested(p);
+            if (cuda) CudaBackend.RequireAvailable();
             using var scene = EstimateScene(input, p);
             double tMin = p["min"];
             var options = new A2crRecoveryOptions(tMin, p["noise"] * p["noise"], p["airunc"],
@@ -67,7 +72,7 @@ namespace SimpleDeHaze.Methods
                 p["feasible"] >= 0.5, (int)p["radius"], p["couple"], p["tv"],
                 (int)p["tviter"], p["tvedge"]);
             var recovery = A2crRecovery.Recover(scene.LinearInput, scene.Transmission,
-                scene.TransmissionVariance, scene.Airlight, options);
+                scene.TransmissionVariance, scene.Airlight, options, cuda);
             var srgb = ColorSpace.ToSrgb(recovery.LinearResult);
             return new A2crExecution(srgb, recovery, scene.Transmission.Clone(),
                 scene.TransmissionVariance.Clone(), scene.SigmaDepth.Clone(), scene.Airlight);

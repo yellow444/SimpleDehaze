@@ -12,7 +12,7 @@ namespace SimpleDeHaze.Methods
     {
         private static readonly HashSet<string> ExcludedA2crParameters = new(StringComparer.Ordinal)
         {
-            "tv", "tviter", "tvedge",
+            "tv", "tviter", "tvedge", CudaBackend.ParameterKey,
         };
 
         internal static IReadOnlyList<ParamDef> PhysicalParameters { get; } = new A2crMethod().Parameters

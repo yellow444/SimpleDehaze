@@ -20,7 +20,7 @@ namespace SimpleDeHaze.Methods
 
         public IReadOnlyList<ParamDef> Parameters { get; } = BaseMethod.Parameters
             .Where(definition => definition.Key is not "space" and not "basis" and not "wiener" and
-                not "edgeS" and not "edgeR")
+                not "edgeS" and not "edgeR" and not CudaBackend.ParameterKey)
             .Select(definition => new ParamDef(
                 definition.Key, definition.Label, definition.Min, definition.Max,
                 definition.Key switch

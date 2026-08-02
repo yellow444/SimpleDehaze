@@ -186,6 +186,24 @@ public sealed class A2crTests
         TestAssert.InRange(values.Min(), 0, 1);
         TestAssert.InRange(values.Max(), 0, 1);
         TestAssert.InRange(execution.Recovery.Diagnostics.InvalidChannelFractionAfter, 0, 0);
+
+        if (CudaBackend.IsAvailable)
+        {
+            parameters[CudaBackend.ParameterKey] = 1;
+            using var gpuExecution = A2crMethod.Execute(input, parameters);
+            using var difference = new Mat();
+            CvInvoke.AbsDiff(execution.SrgbResult, gpuExecution.SrgbResult, difference);
+            double maximum = 0;
+            foreach (var channel in difference.Split())
+            {
+                double minimum = 0, channelMaximum = 0;
+                var minPoint = new System.Drawing.Point(); var maxPoint = new System.Drawing.Point();
+                CvInvoke.MinMaxLoc(channel, ref minimum, ref channelMaximum, ref minPoint, ref maxPoint);
+                maximum = Math.Max(maximum, channelMaximum); channel.Dispose();
+            }
+            TestAssert.InRange(maximum, 0, 2e-4);
+            TestAssert.InRange(gpuExecution.Recovery.Diagnostics.InvalidChannelFractionAfter, 0, 0);
+        }
     }
 
     public void HsvRecovery_InterpolatesHueAcrossCircularSeam()

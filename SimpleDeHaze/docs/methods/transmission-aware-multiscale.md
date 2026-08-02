@@ -2,14 +2,15 @@
 
 Статус: реализованное экспериментальное семейство. В GUI сохранены отдельными алгоритмами:
 
-- старый [`TransScaleLaplacianMethod.cs`](../../Methods/TransScaleLaplacianMethod.cs);
+- старый [`TransScaleLaplacianMethod.cs`](../../Methods/TransScaleLaplacianMethod.cs), где
+  `cuda=0/1` переключает CPU и CUDA для штатного режима Lab-L/Laplacian;
 - HSV Edge абляция [`TransmissionAwareHsvEdgeMethod.cs`](../../Methods/TransmissionAwareHsvEdgeMethod.cs);
 - validation-selected UTAW [`TransmissionAwareHsvUtawMethod.cs`](../../Methods/TransmissionAwareHsvUtawMethod.cs),
   где постоянный параметр `cuda=0/1` вручную переключает CPU и математически эквивалентный
   hybrid CUDA stage.
 
-В curated-набор входят старый Laplacian и UTAW. Edge сохранён для сравнения, CUDA backend — как
-инженерный prototype внутри UTAW, а не отдельный метод. Это не означает универсального
+В curated-набор входят старый Laplacian и UTAW. Edge сохранён для сравнения, CUDA backends
+находятся внутри Laplacian/UTAW, а не дублируют методы отдельными строками. Это не означает универсального
 превосходства рекомендованных методов.
 
 ## Общая физическая часть
@@ -35,7 +36,9 @@
 | `basis` | 2 | stationary B3-spline à trous, CPU |
 | `basis` | 3 | тот же HSV-V à trous stage, hybrid CUDA; без CUDA CPU fallback |
 
-Структурные `space/basis` исключены из AutoTuner. Специализированные Edge и UTAW wrappers
+Структурные `space/basis` исключены из AutoTuner. CUDA старого Laplacian определён для
+`space=0`, `basis=0`, `wiener=0`; остальные структурные варианты пока выполняются на CPU.
+Специализированные Edge и UTAW wrappers
 показывают только параметры своего basis; неактивные координаты не расходуют search budget.
 
 ## Legacy Laplacian gate
@@ -110,8 +113,12 @@ Edge. Визуально UTAW убирает значительную часть
 
 ## CPU/GPU
 
-CUDA-вариант переносит HSV conversion, sparse separable B3 filtering, box-power и coefficient
-arithmetic. CAP/DCP, guided filter, local airlight, recovery и postprocessing остаются CPU.
+У старого Laplacian CUDA-вариант переносит Gaussian/Laplacian pyramids, transmission pyramid,
+smoothstep/richness gates, band limiting и реконструкцию Lab-L. BGR↔Lab оставлен общим CPU-шагом,
+чтобы сохранить то же округление; физическая часть до multiscale stage и postprocessing остаются CPU.
+
+У UTAW CUDA-вариант переносит HSV conversion, sparse separable B3 filtering, box-power и
+coefficient arithmetic. CAP/DCP, guided filter, local airlight, recovery и postprocessing остаются CPU.
 
 На RTX 3080 CPU↔GPU max abs error `4.77e-7`. End-to-end timing при 800 px, warmup=2,
 repeat=5:
@@ -123,9 +130,9 @@ repeat=5:
 | UTAW CPU | 420.6 | 841.2 |
 | UTAW hybrid CUDA | 428.6 | 859.1 |
 
-Hybrid GPU в этом режиме на 1.9% медленнее CPU. GPU-метод оставлен для дальнейшей разработки,
-но speedup claim отсутствует. На машине без CUDA wrapper использует CPU stage; наличие слова GPU
-в имени само по себе не доказывает использование CUDA.
+Приведённый timing относится к UTAW: hybrid GPU в этом режиме на 1.9% медленнее CPU, поэтому
+speedup claim отсутствует. Для нового Laplacian CUDA-path пока зафиксированы functional smoke-test
+и CPU↔CUDA regression, но не публикационный benchmark скорости.
 
 ## AutoTuner
 

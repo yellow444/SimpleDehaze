@@ -174,6 +174,22 @@ public sealed class TransmissionAwareTests
             maximum = Math.Max(maximum, channelMaximum); channel.Dispose();
         }
         TestAssert.InRange(maximum, 0, 7e-4);
+
+        using var laplacianCpu = ContourOps.TransmissionScaleLaplacian(inputFloat, transmission,
+            4, 0.5, 1.6, 1.2, 0.12, 0.45, null, 0.08);
+        using var laplacianGpu = GpuTransmissionLaplacian.Run(inputFloat, transmission,
+            4, 0.5, 1.6, 1.2, 0.12, 0.45, null, 0.08);
+        using var laplacianDifference = new Mat();
+        CvInvoke.AbsDiff(laplacianCpu, laplacianGpu, laplacianDifference);
+        double laplacianMaximum = 0;
+        foreach (var channel in laplacianDifference.Split())
+        {
+            double minimum = 0, channelMaximum = 0;
+            var minPoint = new System.Drawing.Point(); var maxPoint = new System.Drawing.Point();
+            CvInvoke.MinMaxLoc(channel, ref minimum, ref channelMaximum, ref minPoint, ref maxPoint);
+            laplacianMaximum = Math.Max(laplacianMaximum, channelMaximum); channel.Dispose();
+        }
+        TestAssert.InRange(laplacianMaximum, 0, 7e-4);
     }
 
     public void Registry_RecommendsValidatedTransmissionVariantsAndKeepsAblationsOut()
@@ -186,11 +202,14 @@ public sealed class TransmissionAwareTests
         var cudaMethods = MethodRegistry.All
             .Where(method => method.Parameters.Any(parameter => parameter.Key == CudaBackend.ParameterKey))
             .ToArray();
-        TestAssert.Equal(4, cudaMethods.Length);
+        TestAssert.Equal(7, cudaMethods.Length);
+        TestAssert.True(cudaMethods.Any(method => method is A2crMethod));
         TestAssert.True(cudaMethods.Any(method => method is DcpCpuMethod));
         TestAssert.True(cudaMethods.Any(method => method is BeltramiMethod));
         TestAssert.True(cudaMethods.Any(method => method is MattingMethod));
+        TestAssert.True(cudaMethods.Any(method => method is TransScaleLaplacianMethod));
         TestAssert.True(cudaMethods.Any(method => method is TransmissionAwareHsvUtawMethod));
+        TestAssert.True(cudaMethods.Any(method => method is HsvA2crMethod));
         foreach (var method in cudaMethods)
         {
             var backend = method.Parameters.Single(parameter => parameter.Key == CudaBackend.ParameterKey);

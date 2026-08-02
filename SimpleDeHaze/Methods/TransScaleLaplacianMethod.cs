@@ -37,7 +37,8 @@ namespace SimpleDeHaze.Methods
             "   гасим где t мало (плотная дымка = шум); крупные контуры усиливаем везде.\n" +
             "4. Баланс белого + мягкий тон/вибранс.\n\n" +
             "Параметры t_lo/t_hi — где переключается «деталь ↔ шум» по пропусканию; gFine/gMid/gCoarse —\n" +
-            "усиление мелких/средних/крупных полос. Деталь и контуры держатся там, где физически восстановимы.";
+            "усиление мелких/средних/крупных полос. Деталь и контуры держатся там, где физически восстановимы.\n" +
+            "Постоянный параметр «Вычисление» переносит Lab-L Laplacian stage на CUDA.";
 
         private const double Theta0 = 0.121779, Theta1 = 0.959710, Theta2 = -0.780245;
 
@@ -74,6 +75,7 @@ namespace SimpleDeHaze.Methods
             new ParamDef("uUnc",    "UTAW: штраф CAP↔DCP",          0, 10, 1.0, tunable: false),
             new ParamDef("uRadius", "UTAW: радиус энергии",         0, 12, 3, 1, isInt: true, tunable: false),
             new ParamDef("uLimit",  "UTAW: предел delta полосы", 0.005, 0.15, 0.04, tunable: false),
+            CudaBackend.ModeParameter,
         };
 
         public Mat Process(Image<Bgr, byte> input, IReadOnlyDictionary<string, double> p)
@@ -88,6 +90,14 @@ namespace SimpleDeHaze.Methods
             bool roughRobust = p.TryGetValue("rough", out var rv) && rv >= 0.5;
             bool hsvValue = p.TryGetValue("space", out var sv) && sv >= 0.5;
             int basisMode = p.TryGetValue("basis", out var bv) ? Math.Clamp((int)Math.Round(bv), 0, 3) : 0;
+            bool cuda = CudaBackend.IsRequested(p);
+            if (cuda)
+            {
+                CudaBackend.RequireAvailable();
+                if (basisMode != 0 || hsvValue || wiener)
+                    throw new InvalidOperationException(
+                        "CUDA для Transmission-aware Laplacian поддерживает базовый режим Lab-L/Laplacian/wiener=0.");
+            }
 
             using var I = DehazeCore.Normalize(input);
             // structure-confidence: цвет и полосы гейтуем по ней. rough=1 - многомасштабная оценка с
@@ -174,7 +184,10 @@ namespace SimpleDeHaze.Methods
                     gFine, gMid, gCoarse, tLo, tHi, rich, 0.08);
             else if (wiener)
                 enhanced = ContourOps.WienerScaleLaplacian(J01, tRef, levels, gFine, gMid, gCoarse, I, tmin);
-            else enhanced = ContourOps.TransmissionScaleLaplacian(J01, tRef, levels,
+            else enhanced = cuda
+                ? GpuTransmissionLaplacian.Run(J01, tRef, levels,
+                    gFine, gMid, gCoarse, tLo, tHi, rich, 0.08)
+                : ContourOps.TransmissionScaleLaplacian(J01, tRef, levels,
                     gFine, gMid, gCoarse, tLo, tHi, rich, 0.08);
             using var enhancedOwned = enhanced;
 

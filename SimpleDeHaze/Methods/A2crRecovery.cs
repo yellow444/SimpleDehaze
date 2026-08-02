@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 
 using Emgu.CV;
+using Emgu.CV.Cuda;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 
@@ -58,7 +59,7 @@ namespace SimpleDeHaze.Methods
     internal static class A2crRecovery
     {
         public static A2crRecoveryResult Recover(Mat inputLinear, Mat transmission, Mat transmissionVariance,
-            AirlightEstimate airlight, A2crRecoveryOptions options)
+            AirlightEstimate airlight, A2crRecoveryOptions options, bool useCudaLocalEnergy = false)
         {
             if (inputLinear.Depth != DepthType.Cv32F || inputLinear.NumberOfChannels != 3)
                 throw new ArgumentException("A²CR input must be BGR float", nameof(inputLinear));
@@ -94,8 +95,8 @@ namespace SimpleDeHaze.Methods
                 perpendicularEnergy[i] = (float)(q2 / 2.0);
             }
 
-            parallelEnergy = LocalMean(parallelEnergy, rows, cols, options.SignalRadius);
-            perpendicularEnergy = LocalMean(perpendicularEnergy, rows, cols, options.SignalRadius);
+            parallelEnergy = LocalMean(parallelEnergy, rows, cols, options.SignalRadius, useCudaLocalEnergy);
+            perpendicularEnergy = LocalMean(perpendicularEnergy, rows, cols, options.SignalRadius, useCudaLocalEnergy);
             double noise = options.UseNoise ? Math.Max(0, options.NoiseVariance) : 0;
             double up = options.UseAirlightUncertainty ? Math.Max(0, axisVariance.Parallel * options.AirlightUncertaintyScale) : 0;
             double uq = options.UseAirlightUncertainty ? Math.Max(0, axisVariance.Perpendicular * options.AirlightUncertaintyScale) : 0;
@@ -186,13 +187,24 @@ namespace SimpleDeHaze.Methods
         private static int Invalid(double value) => value < -1e-6 || value > 1 + 1e-6 ? 1 : 0;
         private static double ClipDistance(double value) => value < 0 ? -value : value > 1 ? value - 1 : 0;
 
-        private static float[] LocalMean(float[] source, int rows, int cols, int radius)
+        private static float[] LocalMean(float[] source, int rows, int cols, int radius, bool cuda)
         {
             if (radius <= 0) return source;
             using var src = ToMat(source, rows, cols, 1);
-            using var dst = new Mat();
             int size = 2 * radius + 1;
-            CvInvoke.Blur(src, dst, new System.Drawing.Size(size, size), new System.Drawing.Point(-1, -1));
+            using var dst = new Mat();
+            if (cuda)
+            {
+                CudaBackend.RequireAvailable();
+                using var gpuSource = new GpuMat(src);
+                using var gpuResult = new GpuMat();
+                using var filter = new CudaBoxFilter(DepthType.Cv32F, 1, DepthType.Cv32F, 1,
+                    new System.Drawing.Size(size, size), new System.Drawing.Point(-1, -1),
+                    BorderType.Reflect101, new MCvScalar());
+                filter.Apply(gpuSource, gpuResult);
+                gpuResult.Download(dst);
+            }
+            else CvInvoke.Blur(src, dst, new System.Drawing.Size(size, size), new System.Drawing.Point(-1, -1));
             var result = new float[source.Length]; dst.CopyTo(result); return result;
         }
 
