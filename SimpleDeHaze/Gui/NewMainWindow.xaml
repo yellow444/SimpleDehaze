@@ -1,0 +1,539 @@
+<Window x:Class="SimpleDeHaze.Gui.Modern.NewMainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:m="clr-namespace:SimpleDeHaze.Gui.Modern"
+        Title="SimpleDeHaze" Width="1720" Height="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="#0E0F10" Foreground="#E8E9EA"
+        FontFamily="Segoe UI" FontSize="13"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <m:InverseBoolToVisibility x:Key="BoolToVisInverse"/>
+        <SolidColorBrush x:Key="Panel" Color="#131416"/>
+        <SolidColorBrush x:Key="PanelHi" Color="#17191C"/>
+        <SolidColorBrush x:Key="Line" Color="#2A2C2F"/>
+        <SolidColorBrush x:Key="LineSoft" Color="#212326"/>
+        <SolidColorBrush x:Key="Accent" Color="#5AC28E"/>
+        <SolidColorBrush x:Key="Warn" Color="#D29B5E"/>
+        <SolidColorBrush x:Key="Dim" Color="#9AA0A4"/>
+        <SolidColorBrush x:Key="Dim2" Color="#8B9196"/>
+        <SolidColorBrush x:Key="Stage" Color="#16181A"/>
+
+        <Style x:Key="Mono" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Foreground" Value="{StaticResource Dim}"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style x:Key="SectionCaption" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Dim}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="13,7"/>
+            <Setter Property="Foreground" Value="#C9CDD0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#2F3236"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" CornerRadius="4" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="#1E2124"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#5B6064"/>
+                                <Setter TargetName="b" Property="BorderBrush" Value="#232629"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource Accent}"/>
+            <Setter Property="Foreground" Value="#0D1410"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="20,9"/>
+        </Style>
+
+        <Style TargetType="ToggleButton">
+            <Setter Property="Padding" Value="9,5"/>
+            <Setter Property="Foreground" Value="{StaticResource Dim}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="b" CornerRadius="3" Background="Transparent" BorderBrush="#2F3236" BorderThickness="1">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="#1B2A22"/>
+                                <Setter TargetName="b" Property="BorderBrush" Value="#3E6B54"/>
+                                <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="BorderBrush" Value="#454A4F"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#0E0F10"/>
+            <Setter Property="Foreground" Value="#E8E9EA"/>
+            <Setter Property="BorderBrush" Value="#2F3236"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="CaretBrush" Value="#E8E9EA"/>
+        </Style>
+
+        <Style TargetType="Slider">
+            <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="IsMoveToPointEnabled" Value="True"/>
+        </Style>
+
+        <!-- строка параметра: имя, бейдж, число, ползунок, подписи по краям, подсказка -->
+        <DataTemplate x:Key="ParamTemplate">
+            <StackPanel Margin="0,0,0,14" ToolTip="{Binding Hint}" IsEnabled="{Binding IsEnabled}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Name}" Foreground="#E8E9EA" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                    <Border Grid.Column="1" Margin="8,0" Padding="5,1" CornerRadius="2" BorderThickness="1" BorderBrush="#3E6B54">
+                        <TextBlock Text="{Binding Badge}" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource Accent}"/>
+                    </Border>
+                    <Border Grid.Column="2" Background="#0E0F10" BorderBrush="#2F3236" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="56">
+                        <TextBlock Text="{Binding Display}" FontFamily="Consolas" FontSize="12" TextAlignment="Right" Foreground="#F2F3F4"/>
+                    </Border>
+                </Grid>
+                <Grid Margin="0,2,0,0">
+                    <Slider Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value, Mode=TwoWay}"
+                            SmallChange="{Binding Step}" LargeChange="{Binding Step}"
+                            Visibility="{Binding IsCudaMode, Converter={StaticResource BoolToVisInverse}}"/>
+                    <ToggleButton Content="{Binding Display}" IsChecked="{Binding CudaSelected, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                  Visibility="{Binding IsCudaMode, Converter={StaticResource BoolToVis}}"/>
+                </Grid>
+                <Grid>
+                    <TextBlock Style="{StaticResource Mono}" FontSize="11" HorizontalAlignment="Left">
+                        <Run Text="←"/><Run Text=" "/><Run Text="{Binding Low, Mode=OneWay}"/>
+                    </TextBlock>
+                    <TextBlock Style="{StaticResource Mono}" FontSize="11" HorizontalAlignment="Right">
+                        <Run Text="{Binding High, Mode=OneWay}"/><Run Text=" "/><Run Text="→"/>
+                    </TextBlock>
+                </Grid>
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Window.InputBindings>
+        <KeyBinding Key="Return" Command="{Binding ProcessCommand}"/>
+        <KeyBinding Key="Right" Command="{Binding NextFrameCommand}"/>
+        <KeyBinding Key="Left" Command="{Binding PrevFrameCommand}"/>
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="52"/>
+            <RowDefinition Height="56"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ШАПКА -->
+        <Border Background="#141517" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+            <DockPanel Margin="16,0" LastChildFill="False">
+                <TextBlock Text="SimpleDeHaze" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding FileInfo}" Style="{StaticResource Mono}" Margin="20,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding GtMode}" Style="{StaticResource Mono}" Margin="14,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Dim2}"/>
+                <Button DockPanel.Dock="Right" Content="Сохранить результат…" Click="Save_Click" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                <Button DockPanel.Dock="Right" Content="Открыть…" Click="Open_Click" VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
+        <!-- ПАНЕЛЬ ДЕЙСТВИЙ -->
+        <Border Grid.Row="1" Background="#121315" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+            <Grid Margin="16,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Style="{StaticResource Primary}" Content="Обработать" Command="{Binding ProcessCommand}" VerticalAlignment="Center"/>
+
+                <!-- один вход «Подобрать» вместо пяти кнопок: режимы с ценой в секундах -->
+                <Border Grid.Column="1" Margin="12,0,0,0" CornerRadius="4" BorderBrush="#34383C" BorderThickness="1" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Подобрать автоматически" Command="{Binding AutoQuickCommand}" BorderThickness="0" Padding="14,8"/>
+                        <Button Content="▾" BorderThickness="1,0,0,0" Padding="10,8" Click="AutoMenu_Click">
+                            <Button.ContextMenu>
+                                <ContextMenu x:Name="AutoMenu" Background="#17191C" Foreground="#E8E9EA">
+                                    <MenuItem Header="Быстро — только параметры   ~4 c" Command="{Binding AutoQuickCommand}"
+                                              ToolTip="Крутит параметры текущего метода на превью 480 px."/>
+                                    <MenuItem Header="Тщательно — параметры   ~40 c" Command="{Binding AutoThoroughCommand}"
+                                              ToolTip="Больше попыток, оценка на большем кадре. Можно прервать кнопкой «Стоп»."/>
+                                    <MenuItem Header="Найти лучший метод   ~2 мин" Command="{Binding AutoBestCommand}"
+                                              ToolTip="Прогоняет все методы и настраивает победителя."/>
+                                    <Separator/>
+                                    <MenuItem Header="Прогнать все методы (таблица)" Command="{Binding RunAllCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Не гасить цвет (≥ 1.2)" IsCheckable="True" IsChecked="{Binding KeepColor}"/>
+                                    <MenuItem Header="Оценивать на полном кадре (медленно)" IsCheckable="True" IsChecked="{Binding FullEval}"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="цель:" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox ItemsSource="{Binding Goals}" SelectedIndex="{Binding Goal}" Width="176" Height="28"/>
+                </StackPanel>
+
+                <!-- прогресс: что делаем, сколько попыток, сколько осталось -->
+                <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="24,0" HorizontalAlignment="Right" Width="420">
+                    <TextBlock Text="{Binding JobLabel}" Style="{StaticResource Mono}" FontSize="11" Margin="0,0,0,4"/>
+                    <!-- ProgressBar.Value связывается TwoWay по умолчанию, а JobPercent - только для чтения -->
+                    <ProgressBar Height="4" Minimum="0" Maximum="100" Value="{Binding JobPercent, Mode=OneWay}"
+                                 Background="#23262A" Foreground="{StaticResource Accent}" BorderThickness="0"/>
+                </StackPanel>
+
+                <Button Grid.Column="4" Content="Стоп" Command="{Binding StopCommand}" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- ТЕЛО -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="308"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="344"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ЛЕВО: методы -->
+            <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
+                <Grid Margin="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Margin="14,14,14,10">
+                        <DockPanel>
+                            <TextBlock Text="МЕТОДЫ" Style="{StaticResource SectionCaption}"/>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding ShownCount}" Style="{StaticResource Mono}" FontSize="11" HorizontalAlignment="Right"/>
+                        </DockPanel>
+                        <TextBox Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}" Height="32" VerticalContentAlignment="Center"/>
+                        <WrapPanel Margin="0,10,0,0">
+                            <ToggleButton Content="★ рекомендованные" IsChecked="{Binding OnlyRecommended}" Margin="0,0,6,6"/>
+                            <ToggleButton Content="быстрые" IsChecked="{Binding OnlyFast}" Margin="0,0,6,6"/>
+                            <ToggleButton Content="GPU" IsChecked="{Binding OnlyGpu}" Margin="0,0,6,6"/>
+                            <ToggleButton Content="небо" IsChecked="{Binding OnlySkyAware}" Margin="0,0,6,6"/>
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8,0,4,8">
+                        <ItemsControl ItemsSource="{Binding Groups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <DockPanel Margin="6,4">
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SectionCaption}" Margin="0"/>
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" Style="{StaticResource Mono}" FontSize="11" HorizontalAlignment="Right"/>
+                                        </DockPanel>
+                                        <ListBox ItemsSource="{Binding Items}" Background="Transparent" BorderThickness="0"
+                                                 SelectedItem="{Binding DataContext.Selected, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="8,7"/>
+                                                    <Setter Property="Foreground" Value="#C9CDD0"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <Border x:Name="b" CornerRadius="4" Background="Transparent" BorderThickness="2,0,0,0" BorderBrush="Transparent">
+                                                                    <ContentPresenter Margin="{TemplateBinding Padding}"/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="b" Property="Background" Value="#191B1E"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter TargetName="b" Property="Background" Value="#1C1F22"/>
+                                                                        <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                                        <Setter Property="Foreground" Value="#F2F3F4"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="12.5"/>
+                                                            <TextBlock Text="{Binding Meta}" Style="{StaticResource Mono}" FontSize="10.5" Foreground="{StaticResource Dim2}"/>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="1" Text="{Binding ScoreText}" FontFamily="Consolas" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Border Grid.Row="2" BorderBrush="{StaticResource LineSoft}" BorderThickness="0,1,0,0" Padding="14,9">
+                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" MaxHeight="72" Foreground="{StaticResource Dim2}" FontSize="11.5"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ЦЕНТР -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="112"/>
+                </Grid.RowDefinitions>
+
+                <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+                    <DockPanel Margin="14,0" LastChildFill="False">
+                        <ToggleButton x:Name="LoupeToggle" Content="Лупа 100 % (Z)" IsChecked="{Binding LoupeOn}" VerticalAlignment="Center"/>
+                        <ToggleButton Content="Все метрики (F9)" IsChecked="{Binding MetricsPanelOpen}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBlock DockPanel.Dock="Right" Style="{StaticResource Mono}" FontSize="11.5" VerticalAlignment="Center"
+                                   Text="колесо — зум · тяга — панорама · двойной клик или 0 — вписать · ← → — кадр"/>
+                    </DockPanel>
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1.35*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Background="{StaticResource Panel}" Height="28" Padding="10,0">
+                            <TextBlock Text="ВХОД · с дымкой" Style="{StaticResource Mono}" FontSize="11.5" VerticalAlignment="Center"/>
+                        </Border>
+                        <m:ZoomView x:Name="InputView" Source="{Binding InputImage}" Background="{StaticResource Stage}"
+                                    EmptyHint="Кликните, чтобы загрузить изображение с дымкой" Clicked="Input_Click"/>
+                    </DockPanel>
+
+                    <DockPanel Grid.Column="1">
+                        <Border DockPanel.Dock="Top" Background="#1A1D1F" Height="28" Padding="10,0">
+                            <DockPanel>
+                                <TextBlock Text="РЕЗУЛЬТАТ" FontFamily="Consolas" FontSize="11.5" Foreground="#E8E9EA" VerticalAlignment="Center"/>
+                                <TextBlock DockPanel.Dock="Right" FontFamily="Consolas" FontSize="11.5" Foreground="{StaticResource Accent}" VerticalAlignment="Center">
+                                    <Run Text="оценка"/><Run Text=" "/><Run Text="{Binding Score, Mode=OneWay}"/>
+                                </TextBlock>
+                            </DockPanel>
+                        </Border>
+                        <Grid>
+                            <m:ZoomView x:Name="ResultView" Source="{Binding ResultImage}" Background="{StaticResource Stage}"
+                                        EmptyHint="Результат появится здесь"/>
+                            <!-- лупа 100 %: тот же кадр в масштабе 1:1, центр берётся из общего состояния -->
+                            <Border Width="200" Height="150" Margin="12" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    BorderBrush="#3A3E42" BorderThickness="1" Background="#0E0F10"
+                                    Visibility="{Binding LoupeOn, Converter={StaticResource BoolToVis}}">
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Top" Height="20" Padding="7,0" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+                                        <TextBlock Text="ЛУПА 100 %" Style="{StaticResource Mono}" FontSize="10.5" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <m:ZoomView x:Name="LoupeView" Source="{Binding ResultImage}" Background="Black"
+                                                FixedScale="1" Interactive="False" IsHitTestVisible="False"/>
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+                    </DockPanel>
+
+                    <DockPanel Grid.Column="2">
+                        <Border DockPanel.Dock="Top" Background="{StaticResource Panel}" Height="28" Padding="10,0">
+                            <TextBlock Text="ЭТАЛОН · без дымки" Style="{StaticResource Mono}" FontSize="11.5" VerticalAlignment="Center"/>
+                        </Border>
+                        <Grid>
+                            <m:ZoomView x:Name="GtView" Source="{Binding GtImage}" Background="{StaticResource Stage}"/>
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="220"
+                                        Visibility="{Binding HasGt, Converter={StaticResource BoolToVisInverse}}">
+                                <TextBlock Text="Перетащите эталон, чтобы считать PSNR / SSIM / CIEDE2000"
+                                           TextWrapping="Wrap" TextAlignment="Center" Foreground="{StaticResource Dim2}" FontSize="12.5"/>
+                                <Button Content="Выбрать файл" Click="OpenGt_Click" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </DockPanel>
+
+                    <!-- выдвижная таблица метрик (F9) -->
+                    <Border Grid.ColumnSpan="3" VerticalAlignment="Bottom" Height="300" Background="{StaticResource Panel}"
+                            BorderBrush="#34383C" BorderThickness="0,1,0,0"
+                            Visibility="{Binding MetricsPanelOpen, Converter={StaticResource BoolToVis}}">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Height="38" Padding="14,0" BorderBrush="{StaticResource LineSoft}" BorderThickness="0,0,0,1">
+                                <DockPanel>
+                                    <TextBlock Text="СРАВНЕНИЕ МЕТОДОВ · 14 метрик" Style="{StaticResource SectionCaption}" VerticalAlignment="Center" Margin="0"/>
+                                    <TextBlock Text="двойной клик по строке — выбрать метод" Style="{StaticResource Mono}" FontSize="11.5" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                    <Button DockPanel.Dock="Right" Content="Экспорт CSV…" Click="Csv_Click" VerticalAlignment="Center"/>
+                                </DockPanel>
+                            </Border>
+                            <DataGrid ItemsSource="{Binding Bench}" AutoGenerateColumns="False" IsReadOnly="True"
+                                      Background="{StaticResource Panel}" Foreground="#C9CDD0" RowBackground="Transparent"
+                                      AlternatingRowBackground="#17191C" GridLinesVisibility="Horizontal"
+                                      HorizontalGridLinesBrush="#212326" BorderThickness="0" HeadersVisibility="Column"
+                                      FontFamily="Consolas" FontSize="12" MouseDoubleClick="Bench_DoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Метод" Binding="{Binding Method}" Width="300"/>
+                                    <DataGridTextColumn Header="Оценка" Binding="{Binding Score, StringFormat=F0}" Width="70"/>
+                                    <DataGridTextColumn Header="К эталону · PSNR" Binding="{Binding Psnr, StringFormat=F2}" Width="120"/>
+                                    <DataGridTextColumn Header="К эталону · совмещ." Binding="{Binding PsnrAligned, StringFormat=F2}" Width="130"/>
+                                    <DataGridTextColumn Header="К эталону · SSIM" Binding="{Binding Ssim, StringFormat=F3}" Width="120"/>
+                                    <DataGridTextColumn Header="К эталону · DE00" Binding="{Binding Ciede, StringFormat=F2}" Width="120"/>
+                                    <DataGridTextColumn Header="Без эталона · дымка %" Binding="{Binding HazePct, StringFormat=F0}" Width="140"/>
+                                    <DataGridTextColumn Header="Без эталона · контраст" Binding="{Binding Contrast, StringFormat=F2}" Width="140"/>
+                                    <DataGridTextColumn Header="Без эталона · цвет ×" Binding="{Binding ColorX, StringFormat=F2}" Width="130"/>
+                                    <DataGridTextColumn Header="Собственная · натур. Δ" Binding="{Binding NaturalnessDev, StringFormat=F1}" Width="145"/>
+                                    <DataGridTextColumn Header="Скорость · мс" Binding="{Binding Ms}" Width="100"/>
+                                    <DataGridTextColumn Header="Скорость · мс/Мп" Binding="{Binding MsPerMp, StringFormat=F0}" Width="120"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+
+                <!-- ДАТАСЕТ -->
+                <Border Grid.Row="2" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Margin="12,5" Style="{StaticResource Mono}" FontSize="11.5"
+                                   Text="ДАТАСЕТ · зелёная метка — есть эталон · ← → переключение кадра"/>
+                        <ListBox ItemsSource="{Binding Frames}" SelectedItem="{Binding CurrentFrame, Mode=TwoWay}"
+                                 Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate><VirtualizingStackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Width="96" Height="66" Margin="0,0,8,0">
+                                        <Image Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                                        <Border VerticalAlignment="Bottom" Height="16" Background="#D30E0F10">
+                                            <TextBlock Text="{Binding Label}" Style="{StaticResource Mono}" FontSize="10" Margin="4,0" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- ПРАВО: качество + настройка -->
+            <Border Grid.Column="2" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Margin="14">
+                        <DockPanel>
+                            <TextBlock Text="КАЧЕСТВО РЕЗУЛЬТАТА" Style="{StaticResource SectionCaption}"/>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding GtMode}" Style="{StaticResource Mono}" FontSize="11" HorizontalAlignment="Right"/>
+                        </DockPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,10">
+                            <TextBlock Text="{Binding Score}" FontFamily="Consolas" FontSize="44" FontWeight="SemiBold" Foreground="{Binding ScoreBrush}"/>
+                            <TextBlock Text="/ 100" Style="{StaticResource Mono}" VerticalAlignment="Bottom" Margin="10,0,0,7"/>
+                            <TextBlock Text="{Binding Verdict}" TextWrapping="Wrap" Width="150" Foreground="#C9CDD0" FontSize="12.5" VerticalAlignment="Bottom" Margin="12,0,0,4"/>
+                        </StackPanel>
+
+                        <ItemsControl ItemsSource="{Binding Metrics}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,9">
+                                        <DockPanel>
+                                            <TextBlock Text="{Binding Label}" FontFamily="Consolas" FontSize="11.5" Foreground="#C9CDD0"/>
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <TextBlock Text="{Binding Value}" FontFamily="Consolas" FontSize="11.5" Foreground="{Binding Brush}"/>
+                                                <TextBlock Text="{Binding Verdict}" FontFamily="Consolas" FontSize="11.5" Foreground="{StaticResource Dim2}" Margin="8,0,0,0"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <ProgressBar Height="3" Minimum="0" Maximum="1" Value="{Binding Fraction, Mode=OneWay}"
+                                                     Background="#212326" Foreground="{Binding Brush}" BorderThickness="0" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="14,0,14,14"
+                                  BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
+                        <StackPanel>
+                            <DockPanel Margin="0,14,0,10">
+                                <TextBlock Text="НАСТРОЙКА" Style="{StaticResource SectionCaption}" Margin="0"/>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="Мягко" Command="{Binding PresetCommand}" CommandParameter="Мягко" Padding="8,3" FontSize="12"/>
+                                    <Button Content="Норма" Command="{Binding PresetCommand}" CommandParameter="Норма" Padding="8,3" FontSize="12" Margin="4,0"/>
+                                    <Button Content="Сильно" Command="{Binding PresetCommand}" CommandParameter="Сильно" Padding="8,3" FontSize="12"/>
+                                </StackPanel>
+                            </DockPanel>
+
+                            <ItemsControl ItemsSource="{Binding PrimaryParams}" ItemTemplate="{StaticResource ParamTemplate}"/>
+
+                            <StackPanel Margin="0,6,0,8"
+                                        Visibility="{Binding HasModeParams, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="ПОСТОЯННЫЕ РЕЖИМЫ" Style="{StaticResource SectionCaption}" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding ModeParams}" ItemTemplate="{StaticResource ParamTemplate}"/>
+                            </StackPanel>
+
+                            <Expander Foreground="#C9CDD0" Margin="0,4,0,0">
+                                <Expander.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Продвинутые параметры" FontSize="12.5"/>
+                                        <TextBlock Text="{Binding AdvancedCount}" Style="{StaticResource Mono}" FontSize="11" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Expander.Header>
+                                <ItemsControl ItemsSource="{Binding AdvancedParams}" ItemTemplate="{StaticResource ParamTemplate}" Margin="0,10,0,0"/>
+                            </Expander>
+
+                            <CheckBox Content="Живое превью при перетаскивании (480 px)" IsChecked="{Binding LivePreview}"
+                                      Foreground="#C9CDD0" Margin="0,14,0,0"/>
+                            <Button Content="Сбросить параметры метода" Command="{Binding ResetParamsCommand}" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
